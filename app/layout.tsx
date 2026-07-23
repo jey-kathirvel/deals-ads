@@ -6,8 +6,8 @@ const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });
 const mono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Deals — India’s smartest online deals",
-  description: "Discover verified offers, coupon codes and price drops from India’s favourite online stores.",
+  title: "Deals — AI-assisted deal discovery for India",
+  description: "Discover colorful, curated offers with transparent value signals across popular Indian online stores.",
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
 
