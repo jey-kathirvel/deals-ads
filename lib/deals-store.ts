@@ -4,10 +4,16 @@ import type { Deal } from "./deal-types";
 
 const dataDir = process.env.DEALS_DATA_DIR || path.join(process.cwd(), "data");
 const dataFile = path.join(dataDir, "deals.json");
+const seedFile = path.join(process.cwd(), "seed", "deals.json");
 
 async function ensureStore() {
   await fs.mkdir(dataDir, { recursive: true });
-  try { await fs.access(dataFile); } catch { await fs.writeFile(dataFile, "[]", "utf8"); }
+  try {
+    await fs.access(dataFile);
+  } catch {
+    try { await fs.copyFile(seedFile, dataFile); }
+    catch { await fs.writeFile(dataFile, "[]", "utf8"); }
+  }
 }
 
 export async function getDeals(includeInactive = false): Promise<Deal[]> {
