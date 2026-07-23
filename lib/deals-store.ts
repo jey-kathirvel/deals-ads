@@ -55,7 +55,7 @@ function normalizeDeal(item: Deal): Deal {
   };
 }
 
-export async function importDeals(rows: Array<Record<string, string>>) {
+export async function importDeals(rows: Array<Record<string, string>>, options: { publish?: boolean; source?: Deal["source"] } = {}) {
   const items = await getDeals(true);
   const seenUrls = new Set(items.map((item) => canonical(item.url)));
   const seenTitles = new Set(items.map((item) => `${item.platform.toLowerCase()}|${item.title.toLowerCase().replace(/\W/g, "")}`));
@@ -73,7 +73,7 @@ export async function importDeals(rows: Array<Record<string, string>>) {
       title, platform, url, price, mrp, category: row.category || "Electronics", imageUrl: row.imageUrl || row.image || "",
       tag: row.tag || "Imported deal", code: row.code || row.coupon || "", couponTerms: row.couponTerms || row.terms || "",
       expires: row.expires || "Limited time", expiryDate: row.expiryDate || "", rating: Number(row.rating || 4.5),
-      votes: Number(row.votes || 0), active: false, status: "review", source: "csv", sourceUrl: row.sourceUrl || url,
+      votes: Number(row.votes || 0), active: options.publish ?? false, status: options.publish ? "published" : "review", source: options.source || "csv", sourceUrl: row.sourceUrl || url,
     });
     imported.push(deal); seenUrls.add(canonical(deal.url)); seenTitles.add(titleKey);
   }
