@@ -25,11 +25,20 @@ export async function saveDeal(input: Partial<Deal> & Pick<Deal, "title" | "plat
     price: Number(input.price), mrp: Number(input.mrp), rating: Number(input.rating ?? 4.5),
     votes: Number(input.votes ?? 0), tag: input.tag?.trim() || "New deal", color: input.color || "#e7f1ec",
     emoji: input.emoji || "DEAL", code: input.code?.trim() || "", expires: input.expires?.trim() || "Limited time",
-    url: input.url.trim(), active: input.active ?? true, source: input.source || "manual", updatedAt: new Date().toISOString(),
+    url: affiliateUrl(input.url.trim(), input.platform), active: input.active ?? true, source: input.source || "manual", updatedAt: new Date().toISOString(),
   };
   const next = existing ? items.map((item) => item.id === deal.id ? deal : item) : [deal, ...items];
   await writeDeals(next);
   return deal;
+}
+
+function affiliateUrl(value: string, platform: string) {
+  if (platform.toLowerCase() !== "amazon" || !process.env.AMAZON_PARTNER_TAG) return value;
+  try {
+    const url = new URL(value);
+    if (url.hostname === "amazon.in" || url.hostname.endsWith(".amazon.in")) url.searchParams.set("tag", process.env.AMAZON_PARTNER_TAG);
+    return url.toString();
+  } catch { return value; }
 }
 
 export async function deleteDeal(id: number) {
