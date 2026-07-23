@@ -19,9 +19,25 @@ async function ensureStore() {
 export async function getDeals(includeInactive = false): Promise<Deal[]> {
   await ensureStore();
   const raw = JSON.parse(await fs.readFile(dataFile, "utf8")) as Deal[];
-  const now = Date.now();
-  const items = raw.map((item) => normalizeDeal(item));
-  return items.filter((item) => includeInactive || (item.active && item.status === "published" && (!item.expiryDate || new Date(item.expiryDate).getTime() >= now))).sort((a, b) => b.id - a.id);
+  const normalized = raw.map((item) => normalizeDeal(item));
+  const { items, removed } = removeStalePublishedDeals(normalized);
+
+  // Cleanup happens during normal reads, so expired storefront records cannot
+  // accumulate even when an external scheduler is unavailable.
+  if (removed > 0) await writeDeals(items);
+
+  return items
+    .filter((item) => includeInactive || isPublicDeal(item))
+    .sort((a, b) => b.id - a.id);
+}
+
+export async function cleanupDeals() {
+  await ensureStore();
+  const raw = JSON.parse(await fs.readFile(dataFile, "utf8")) as Deal[];
+  const normalized = raw.map((item) => normalizeDeal(item));
+  const result = removeStalePublishedDeals(normalized);
+  if (result.removed > 0) await writeDeals(result.items);
+  return { removed: result.removed, remaining: result.items.length, cleanedAt: new Date().toISOString() };
 }
 
 export async function saveDeal(input: Partial<Deal> & Pick<Deal, "title" | "platform" | "category" | "price" | "mrp" | "url">) {
@@ -46,13 +62,44 @@ export async function saveDeal(input: Partial<Deal> & Pick<Deal, "title" | "plat
 
 function normalizeDeal(item: Deal): Deal {
   const status = item.status || (item.active ? "published" : "draft");
-  const expired = item.expiryDate && new Date(item.expiryDate).getTime() < Date.now();
+  const expired = hasExpired(item.expiryDate);
   return {
     ...item, imageUrl: item.imageUrl || "", status: expired ? "expired" : status,
     expiryDate: item.expiryDate || "", couponTerms: item.couponTerms || "",
     sourceUrl: item.sourceUrl || item.url, lastCheckedAt: item.lastCheckedAt || item.updatedAt,
     importedAt: item.importedAt || item.updatedAt,
   };
+}
+
+function isPublicDeal(item: Deal) {
+  return item.active && item.status === "published" && !hasExpired(item.expiryDate);
+}
+
+function removeStalePublishedDeals(items: Deal[]) {
+  let removed = 0;
+  const activeItems = items.filter((item) => {
+    // Draft and review records may intentionally be inactive and must remain in
+    // the admin workflow. Only stale records that reached publication are purged.
+    const expired = item.status === "expired" || hasExpired(item.expiryDate);
+    const inactivePublished = item.status === "published" && !item.active;
+    const shouldRemove = expired || inactivePublished;
+    if (shouldRemove) removed += 1;
+    return !shouldRemove;
+  });
+  return { items: activeItems, removed };
+}
+
+function hasExpired(expiryDate?: string) {
+  if (!expiryDate) return false;
+  const expiry = expiryTimestamp(expiryDate);
+  return Number.isFinite(expiry) && expiry < Date.now();
+}
+
+function expiryTimestamp(value: string) {
+  // A date-only value remains valid through the end of that calendar day in
+  // India, instead of expiring at UTC midnight at the beginning of the date.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(`${value}T23:59:59.999+05:30`).getTime();
+  return new Date(value).getTime();
 }
 
 export async function importDeals(rows: Array<Record<string, string>>, options: { publish?: boolean; source?: Deal["source"] } = {}) {
