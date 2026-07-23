@@ -1,9 +1,19 @@
 import { isAdminRequest, unauthorized } from "@/lib/admin-auth";
+import { amazonConfig, amazonItemsToCsv, fetchAmazonDeals } from "@/lib/amazon-creators";
 
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   if (!isAdminRequest(request)) return unauthorized();
-  const required = ["AMAZON_CREATORS_CREDENTIAL_ID", "AMAZON_CREATORS_CREDENTIAL_SECRET", "AMAZON_CREATORS_CREDENTIAL_VERSION", "AMAZON_PARTNER_TAG"];
-  const missing = required.filter((key) => !process.env[key]);
-  return Response.json({ ready: missing.length === 0, missing, marketplace: "www.amazon.in", api: "Amazon Creators API" });
+  return Response.json(amazonConfig());
+}
+
+export async function POST(request: Request) {
+  if (!isAdminRequest(request)) return unauthorized();
+  try {
+    const body = await request.json();
+    const items = await fetchAmazonDeals({ count: body.count, minSavingPercent: body.minSavingPercent });
+    return Response.json({ items, csv: amazonItemsToCsv(items), generatedAt: new Date().toISOString() });
+  } catch (error) {
+    return Response.json({ error: error instanceof Error ? error.message : "Amazon import failed." }, { status: 400 });
+  }
 }
