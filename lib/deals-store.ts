@@ -24,7 +24,7 @@ export async function saveDeal(input: Partial<Deal> & Pick<Deal, "title" | "plat
     title: input.title.trim(), platform: input.platform.trim(), category: input.category,
     price: Number(input.price), mrp: Number(input.mrp), rating: Number(input.rating ?? 4.5),
     votes: Number(input.votes ?? 0), tag: input.tag?.trim() || "New deal", color: input.color || "#e7f1ec",
-    emoji: input.emoji || "DEAL", code: input.code?.trim() || "", expires: input.expires?.trim() || "Limited time",
+    emoji: input.emoji || "DEAL", imageUrl: input.imageUrl?.trim() || "", code: input.code?.trim() || "", expires: input.expires?.trim() || "Limited time",
     url: affiliateUrl(input.url.trim(), input.platform), active: input.active ?? true, source: input.source || "manual", updatedAt: new Date().toISOString(),
   };
   const next = existing ? items.map((item) => item.id === deal.id ? deal : item) : [deal, ...items];

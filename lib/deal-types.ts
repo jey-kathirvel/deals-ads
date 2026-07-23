@@ -10,6 +10,7 @@ export type Deal = {
   tag: string;
   color: string;
   emoji: string;
+  imageUrl: string;
   code: string;
   expires: string;
   url: string;
