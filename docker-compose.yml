@@ -1,0 +1,7 @@
+services:
+  deals:
+    build: .
+    container_name: ads-ai-deals
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8089:3000"
