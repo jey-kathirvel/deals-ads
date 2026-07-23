@@ -55,12 +55,12 @@ export default function DealsApp({ initialDeals = [] }: { initialDeals?: Deal[] 
     </section>
 
     <section className="platforms" id="stores"><span>Explore stores you know</span><div>
-      <b className="store amazon"><i aria-hidden="true">a</i><span>amazon</span></b>
-      <b className="store flipkart"><i aria-hidden="true">F</i><span>Flipkart</span></b>
-      <b className="store myntra"><i aria-hidden="true">M</i><span>Myntra</span></b>
-      <b className="store nykaa"><i aria-hidden="true">N</i><span>NYKAA</span></b>
-      <b className="store croma"><i aria-hidden="true">C</i><span>CROMA</span></b>
-      <b className="store tata"><i aria-hidden="true">T</i><span>TATA CLiQ</span></b>
+      <b className="store amazon"><img src="/store-logos/amazon.svg" alt="Amazon" /></b>
+      <b className="store flipkart"><img src="/store-logos/flipkart.png" alt="Flipkart" /></b>
+      <b className="store myntra"><img src="/store-logos/myntra.svg" alt="Myntra" /></b>
+      <b className="store nykaa"><img src="/store-logos/nykaa.svg" alt="Nykaa" /></b>
+      <b className="store croma"><img src="/store-logos/croma.png" alt="Croma" /></b>
+      <b className="store tata"><img src="/store-logos/tata-cliq.jpg" alt="Tata CLiQ" /></b>
     </div></section>
 
     <section className="deals-section" id="deals">
