@@ -1,0 +1,19 @@
+export type Deal = {
+  id: number;
+  title: string;
+  platform: string;
+  category: string;
+  price: number;
+  mrp: number;
+  rating: number;
+  votes: number;
+  tag: string;
+  color: string;
+  emoji: string;
+  code: string;
+  expires: string;
+  url: string;
+  active: boolean;
+  source: "manual" | "amazon";
+  updatedAt: string;
+};

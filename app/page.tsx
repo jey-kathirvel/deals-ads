@@ -1,5 +1,8 @@
 import DealsApp from "./deals-app";
+import { getDeals } from "@/lib/deals-store";
 
-export default function Home() {
-  return <DealsApp />;
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  return <DealsApp initialDeals={await getDeals()} />;
 }

@@ -1,0 +1,6 @@
+[
+  {"id":8,"title":"Goa return flights from Bengaluru","platform":"MakeMyTrip","category":"Travel","price":4499,"mrp":6899,"rating":4.4,"votes":61,"tag":"Summer sale","color":"#fff4d7","emoji":"FLY","code":"FLYHIGH","expires":"Book by Friday","url":"https://www.makemytrip.com/","active":true,"source":"manual","updatedAt":"2026-07-23T00:00:00.000Z"},
+  {"id":7,"title":"OnePlus Nord CE4 Lite 5G","platform":"Croma","category":"Mobiles","price":17999,"mrp":23999,"rating":4.5,"votes":194,"tag":"Exchange bonus","color":"#e6f2f5","emoji":"5G","code":"","expires":"Limited stock","url":"https://www.croma.com/","active":true,"source":"manual","updatedAt":"2026-07-23T00:00:00.000Z"},
+  {"id":4,"title":"boAt Airdopes 141 ANC","platform":"Amazon","category":"Electronics","price":1499,"mrp":5990,"rating":4.3,"votes":178,"tag":"Hot deal","color":"#e3f8f0","emoji":"ANC","code":"","expires":"Ends today","url":"https://www.amazon.in/","active":true,"source":"manual","updatedAt":"2026-07-23T00:00:00.000Z"},
+  {"id":1,"title":"Noise ColorFit Pro 5 Smartwatch","platform":"Amazon","category":"Electronics","price":2999,"mrp":6999,"rating":4.4,"votes":126,"tag":"Lowest price","color":"#f4e8ff","emoji":"WATCH","code":"","expires":"Ends tonight","url":"https://www.amazon.in/","active":true,"source":"manual","updatedAt":"2026-07-23T00:00:00.000Z"}
+]

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { Deal } from "@/lib/deal-types";
 
 const categories = ["All", "Mobiles", "Electronics", "Fashion", "Home", "Beauty", "Travel"];
 
@@ -17,7 +18,8 @@ const deals = [
 
 const inr = new Intl.NumberFormat("en-IN");
 
-export default function DealsApp() {
+export default function DealsApp({ initialDeals = deals as Deal[] }: { initialDeals?: Deal[] }) {
+  const liveDeals = initialDeals;
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("Popular");
@@ -25,9 +27,9 @@ export default function DealsApp() {
   const [copied, setCopied] = useState("");
 
   const filtered = useMemo(() => {
-    const result = deals.filter((deal) => (category === "All" || deal.category === category) && `${deal.title} ${deal.platform}`.toLowerCase().includes(query.toLowerCase()));
+    const result = liveDeals.filter((deal) => (category === "All" || deal.category === category) && `${deal.title} ${deal.platform}`.toLowerCase().includes(query.toLowerCase()));
     return [...result].sort((a, b) => sort === "Discount" ? (1 - b.price / b.mrp) - (1 - a.price / a.mrp) : sort === "Price: Low" ? a.price - b.price : b.votes - a.votes);
-  }, [category, query, sort]);
+  }, [category, query, sort, liveDeals]);
 
   const copyCode = async (code: string) => {
     await navigator.clipboard?.writeText(code);
@@ -75,7 +77,7 @@ export default function DealsApp() {
             <div className="product-visual" style={{ background: deal.color }}><span className="deal-tag">{deal.tag}</span><button className={saved.includes(deal.id) ? "heart saved" : "heart"} onClick={() => setSaved((items) => items.includes(deal.id) ? items.filter((id) => id !== deal.id) : [...items, deal.id])} aria-label="Save deal">{saved.includes(deal.id) ? "♥" : "♡"}</button><span className="product-emoji">{deal.emoji}</span></div>
             <div className="deal-content"><div className="platform-name">{deal.platform}<span>★ {deal.rating}</span></div><h3>{deal.title}</h3><div className="price-row"><strong>₹{inr.format(deal.price)}</strong><s>₹{inr.format(deal.mrp)}</s><b>{discount}% off</b></div>
               {deal.code ? <button className="coupon" onClick={() => copyCode(deal.code)}><span>{copied === deal.code ? "Copied!" : deal.code}</span><b>{copied === deal.code ? "✓" : "Copy"}</b></button> : <div className="auto-deal">✓ Deal applied automatically</div>}
-              <div className="deal-footer"><small>{deal.expires}</small><a href="#" onClick={(e) => e.preventDefault()}>Get deal <span>↗</span></a></div>
+              <div className="deal-footer"><small>{deal.expires}</small><a href={deal.url || "#"} target="_blank" rel="nofollow sponsored noopener">Get deal <span>↗</span></a></div>
             </div>
           </article>;
         })}</div> : <div className="empty"><span>⌕</span><h3>No matching deals yet</h3><p>Try another search or category.</p></div>}
