@@ -54,7 +54,14 @@ export default function DealsApp({ initialDeals = [] }: { initialDeals?: Deal[] 
       <div className="ai-orbit" aria-label="AI deal intelligence illustration"><div className="orbit orbit-one" /><div className="orbit orbit-two" /><div className="ai-core"><small>AI DEAL</small><strong>RADAR</strong><span>✦</span></div><div className="signal-card signal-price"><span>PRICE SIGNAL</span><b>Strong value</b><small>Based on price gap</small></div><div className="signal-card signal-rating"><span>SHOPPER SIGNAL</span><b>★ 4.6</b><small>Rating confidence</small></div><div className="signal-card signal-save"><span>SMART PICK</span><b>Save more</b><small>Compare before buying</small></div></div>
     </section>
 
-    <section className="platforms" id="stores"><span>Explore stores you know</span><div><b className="amazon">amazon</b><b className="flipkart">Flipkart</b><b className="myntra">Myntra</b><b className="nykaa">NYKAA</b><b className="croma">CROMA</b><b className="tata">TATA CLiQ</b></div></section>
+    <section className="platforms" id="stores"><span>Explore stores you know</span><div>
+      <b className="store amazon"><i aria-hidden="true">a</i><span>amazon</span></b>
+      <b className="store flipkart"><i aria-hidden="true">F</i><span>Flipkart</span></b>
+      <b className="store myntra"><i aria-hidden="true">M</i><span>Myntra</span></b>
+      <b className="store nykaa"><i aria-hidden="true">N</i><span>NYKAA</span></b>
+      <b className="store croma"><i aria-hidden="true">C</i><span>CROMA</span></b>
+      <b className="store tata"><i aria-hidden="true">T</i><span>TATA CLiQ</span></b>
+    </div></section>
 
     <section className="deals-section" id="deals">
       <div className="section-head"><div><span className="eyebrow dark"><Icon name="sparkles" /> AI-ASSISTED PICKS</span><h2>Deals worth a closer look</h2><p>Compare savings, ratings and shopper interest at a glance.</p></div><div className="sort"><label htmlFor="sort">Sort by</label><select id="sort" value={sort} onChange={(e) => setSort(e.target.value)}><option>Popular</option><option>Discount</option><option>Price: Low</option></select></div></div>
