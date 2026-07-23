@@ -6,7 +6,7 @@ import type { Deal } from "@/lib/deal-types";
 const categories = ["All", "Mobiles", "Electronics", "Fashion", "Home", "Beauty", "Travel"];
 const inr = new Intl.NumberFormat("en-IN");
 const scoreDeal = (deal: Deal) => Math.min(98, Math.round(38 + Math.max(0, (1 - deal.price / deal.mrp) * 100) * .55 + deal.rating * 4 + Math.min(deal.votes, 250) * .04));
-type IconName = "search" | "heart" | "sparkles" | "arrow" | "scan" | "chart" | "shield" | "tag" | "star" | "check" | "trending";
+type IconName = "search" | "heart" | "sparkles" | "arrow" | "scan" | "chart" | "shield" | "tag" | "star" | "check" | "trending" | "clock";
 const paths: Record<IconName, React.ReactNode> = {
   search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
   heart: <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z" />,
@@ -19,6 +19,7 @@ const paths: Record<IconName, React.ReactNode> = {
   star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z" />,
   check: <path d="m5 12 4 4L19 6" />,
   trending: <><path d="m3 17 6-6 4 4 7-8" /><path d="M15 7h5v5" /></>,
+  clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
 };
 function Icon({ name, filled = false }: { name: IconName; filled?: boolean }) {
   return <svg className="icon" viewBox="0 0 24 24" aria-hidden="true" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
@@ -70,7 +71,7 @@ export default function DealsApp({ initialDeals = [] }: { initialDeals?: Deal[] 
         const discount = Math.round((1 - deal.price / deal.mrp) * 100);
         return <article className="deal-card" key={deal.id}>
           <div className="product-visual" style={{ background: deal.color }}><span className="deal-tag"><Icon name="tag" />{deal.tag}</span><span className="ai-score"><Icon name="sparkles" /><b>{scoreDeal(deal)}</b><small>AI signal</small></span><button className={saved.includes(deal.id) ? "heart saved" : "heart"} onClick={() => setSaved((items) => items.includes(deal.id) ? items.filter((id) => id !== deal.id) : [...items, deal.id])} aria-label="Save deal"><Icon name="heart" filled={saved.includes(deal.id)} /></button>{deal.imageUrl ? <img className="product-image" src={deal.imageUrl} alt={deal.title} loading="lazy" /> : <span className="product-emoji">{deal.emoji}</span>}</div>
-          <div className="deal-content"><div className="platform-name">{deal.platform}<span><Icon name="star" filled /> {deal.rating}</span></div><h3>{deal.title}</h3><div className="price-row"><strong>₹{inr.format(deal.price)}</strong><s>₹{inr.format(deal.mrp)}</s><b>{discount}% off</b></div>{deal.code ? <button className="coupon" onClick={() => copyCode(deal.code)}><span>{copied === deal.code ? "Copied!" : deal.code}</span><b>{copied === deal.code ? <Icon name="check" /> : "Copy"}</b></button> : <div className="auto-deal"><Icon name="check" /> Deal applied automatically</div>}<div className="deal-footer"><small>{deal.expires}</small><a href={deal.url || "#"} target="_blank" rel="nofollow sponsored noopener">Get deal <Icon name="arrow" /></a></div></div>
+          <div className="deal-content"><div className="platform-name">{deal.platform}<span><Icon name="star" filled /> {deal.rating}</span></div><h3>{deal.title}</h3><div className="price-row"><strong>₹{inr.format(deal.price)}</strong><s>₹{inr.format(deal.mrp)}</s><b>{discount}% off</b></div>{deal.code ? <button className="coupon" onClick={() => copyCode(deal.code)}><span>{copied === deal.code ? "Copied!" : deal.code}</span><b>{copied === deal.code ? <Icon name="check" /> : "Copy"}</b></button> : <div className="auto-deal"><Icon name="check" /> Deal applied automatically</div>}<div className="deal-footer"><span className="expiry-pill"><Icon name="clock" />{deal.expires}</span><a className="get-deal-button" href={deal.url || "#"} target="_blank" rel="nofollow sponsored noopener"><span>Get deal</span><Icon name="arrow" /></a></div></div>
         </article>;
       })}</div> : <div className="empty"><span>⌕</span><h3>No matching deals yet</h3><p>Try another search or category.</p></div>}
     </section>
