@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Deal } from "@/lib/deal-types";
-
+import { slugify } from "@/lib/slug";
 const categories = ["All", "Mobiles", "Electronics", "Fashion", "Home", "Beauty", "Travel"];
 const inr = new Intl.NumberFormat("en-IN");
 const scoreDeal = (deal: Deal) => Math.min(98, Math.round(38 + Math.max(0, (1 - deal.price / deal.mrp) * 100) * .55 + deal.rating * 4 + Math.min(deal.votes, 250) * .04));
@@ -69,9 +69,31 @@ export default function DealsApp({ initialDeals = [] }: { initialDeals?: Deal[] 
       <div className="category-tabs" role="tablist">{categories.map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)} role="tab" aria-selected={category === item}>{item}</button>)}</div>
       {filtered.length ? <div className="deal-grid">{filtered.map((deal) => {
         const discount = Math.round((1 - deal.price / deal.mrp) * 100);
-        return <article className="deal-card" key={deal.id}>
+        return <article className="deal-card" key={deal.id}
+                      role="link"
+                      tabIndex={0}
+                      onClick={(event) => {
+                        const target = event.target as HTMLElement;
+
+                        if (
+                          target.closest(
+                            "button, a, input, select, textarea, [role='button']",
+                          )
+                        ) {
+                          return;
+                        }
+
+                        window.location.href = `/deal/${slugify(deal.title)}`;
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          window.location.href = `/deal/${slugify(deal.title)}`;
+                        }
+                      }}
+                    >
           <div className="product-visual" style={{ background: deal.color }}><span className="deal-tag"><Icon name="tag" />{deal.tag}</span><span className="ai-score"><Icon name="sparkles" /><b>{scoreDeal(deal)}</b><small>AI signal</small></span><button className={saved.includes(deal.id) ? "heart saved" : "heart"} onClick={() => setSaved((items) => items.includes(deal.id) ? items.filter((id) => id !== deal.id) : [...items, deal.id])} aria-label="Save deal"><Icon name="heart" filled={saved.includes(deal.id)} /></button>{deal.imageUrl ? <img className="product-image" src={deal.imageUrl} alt={deal.title} loading="lazy" /> : <span className="product-emoji">{deal.emoji}</span>}</div>
-          <div className="deal-content"><div className="platform-name">{deal.platform}<span><Icon name="star" filled /> {deal.rating}</span></div><h3>{deal.title}</h3><div className="price-row"><strong>₹{inr.format(deal.price)}</strong><s>₹{inr.format(deal.mrp)}</s><b>{discount}% off</b></div>{deal.code ? <button className="coupon" onClick={() => copyCode(deal.code)}><span>{copied === deal.code ? "Copied!" : deal.code}</span><b>{copied === deal.code ? <Icon name="check" /> : "Copy"}</b></button> : <div className="auto-deal"><Icon name="check" /> Deal applied automatically</div>}<div className="deal-footer"><span className="expiry-pill"><Icon name="clock" />{deal.expires}</span><a className="get-deal-button" href={deal.url || "#"} target="_blank" rel="nofollow sponsored noopener"><span>Get deal</span><Icon name="arrow" /></a></div></div>
+          <div className="deal-content"><div className="platform-name">{deal.platform}<span><Icon name="star" filled /> {deal.rating}</span></div><h3>{deal.title}</h3><div className="price-row"><strong>₹{inr.format(deal.price)}</strong><s>₹{inr.format(deal.mrp)}</s><b>{discount}% off</b></div>{deal.code ? <button className="coupon" onClick={() => copyCode(deal.code)}><span>{copied === deal.code ? "Copied!" : deal.code}</span><b>{copied === deal.code ? <Icon name="check" /> : "Copy"}</b></button> : <div className="auto-deal"><Icon name="check" /> Deal applied automatically</div>}<div className="deal-footer"><span className="expiry-pill"><Icon name="clock" />{deal.expires}</span><a className="get-deal-button" href={`/deal/${slugify(deal.title)}`}><span>Get deal</span><Icon name="arrow" /></a></div></div>
         </article>;
       })}</div> : <div className="empty"><span>⌕</span><h3>No matching deals yet</h3><p>Try another search or category.</p></div>}
     </section>
