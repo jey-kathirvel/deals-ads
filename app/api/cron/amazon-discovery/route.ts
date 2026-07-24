@@ -1,6 +1,6 @@
 import {
-  discoverAmazonDeals,
-} from "@/lib/amazon/deal-discovery";
+  runAmazonDiscovery,
+} from "@/lib/deals-engine/services/discovery-service";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
       .map((keyword) => keyword.trim())
       .filter(Boolean);
 
-    const result = await discoverAmazonDeals({
+    const result = await runAmazonDiscovery({
       keywords:
         keywords && keywords.length > 0
           ? keywords
