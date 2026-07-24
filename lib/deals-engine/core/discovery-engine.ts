@@ -1,77 +1,258 @@
-import type { Deal } from "../models/deal";
-import type { Coupon } from "../models/coupon";
-import type { DiscoveryProvider } from "../providers/provider";
+import type {
+  DealValidator,
+  DiscoveryContext,
+  DiscoveryEngineResult,
+  DiscoveryProvider,
+  RawDeal,
+} from "../contracts";
 
-import { validateDeal } from "./validator";
-import { deduplicateDeals } from "./deduplicator";
-import { calculateDealScore } from "../utils/score";
-import { normalizeUrl } from "../utils/url";
+import type { Deal } from "../models";
 
-export interface DiscoverySummary {
-  providers: number;
-  discoveredDeals: number;
-  discoveredCoupons: number;
-  validDeals: number;
-  publishedDeals: number;
-  rejectedDeals: number;
-}
+import {
+  CategoryValidator,
+  ExpiryValidator,
+  ImageValidator,
+  PriceValidator,
+  RetailerValidator,
+  TitleValidator,
+  UrlValidator,
+} from "../validators";
 
-export interface DiscoveryOutput {
-  deals: Deal[];
-  coupons: Coupon[];
-  summary: DiscoverySummary;
-}
+import { DealProcessingPipeline } from "./deal-processing-pipeline";
+import { DiscoveryAggregator } from "./discovery-aggregator";
+import { DiscoveryManager } from "./discovery-manager";
+import { InMemoryProviderRegistry } from "./provider-registry";
+
+import { AmazonDiscoveryProvider } from "../providers/amazon-discovery-provider";
+import { FlipkartDiscoveryProvider } from "../providers/flipkart-discovery-provider";
+
 
 export class DiscoveryEngine {
-  private readonly providers: DiscoveryProvider[] = [];
+  private readonly registry: InMemoryProviderRegistry;
+  private readonly discoveryManager: DiscoveryManager;
+  private readonly validators: DealValidator[];
 
-  register(provider: DiscoveryProvider): void {
-    if (provider.enabled) {
-      this.providers.push(provider);
+  constructor(
+    discoveryManager?: DiscoveryManager,
+    validators?: DealValidator[],
+  ) {
+    this.registry = new InMemoryProviderRegistry();
+
+    this.discoveryManager =
+      discoveryManager ??
+      new DiscoveryManager(this.registry);
+
+    this.validators =
+      validators ??
+      [
+        new TitleValidator(),
+        new RetailerValidator(),
+        new CategoryValidator(),
+        new ImageValidator(),
+        new UrlValidator(),
+        new PriceValidator(),
+        new ExpiryValidator(),
+      ];
+  
+    this.registerDefaultProviders();
+}
+
+  register(
+    provider: DiscoveryProvider | object,
+  ): void {
+    const candidate =
+      provider as DiscoveryProvider & {
+        id?: string;
+        name?: string;
+        enabled?: boolean;
+      };
+
+    if (!candidate.info) {
+      const providerId =
+        candidate.id ??
+        candidate.name ??
+        candidate.constructor?.name ??
+        "legacy-provider";
+
+      Object.defineProperty(candidate, "info", {
+        configurable: true,
+        enumerable: true,
+        writable: false,
+        value: {
+          id: providerId,
+          name:
+            candidate.name ??
+            candidate.constructor?.name ??
+            providerId,
+          enabled:
+            candidate.enabled !== false,
+        },
+      });
     }
+
+    this.registry.register(
+      candidate as DiscoveryProvider,
+    );
   }
 
-  async run(maxDeals = 100): Promise<DiscoveryOutput> {
-    const discoveredDeals: Deal[] = [];
-    const discoveredCoupons: Coupon[] = [];
+  unregister(
+    providerId: string,
+  ): void {
+    this.registry.unregister(providerId);
+  }
 
-    for (const provider of this.providers) {
-      const result = await provider.discover();
+  private toLegacyDeal(
+    rawDeal: RawDeal,
+    index: number,
+  ): Deal {
+    const partial =
+      rawDeal as RawDeal & Partial<Deal>;
 
-      discoveredDeals.push(...result.deals);
-      discoveredCoupons.push(...result.coupons);
-    }
-
-    const validDeals: Deal[] = [];
-
-    for (const deal of discoveredDeals) {
-      const validation = validateDeal(deal);
-
-      if (!validation.valid) {
-        continue;
-      }
-
-      deal.score = calculateDealScore(deal);
-
-      validDeals.push(deal);
-    }
-
-    const rankedDeals = deduplicateDeals(validDeals)
-      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-      .slice(0, maxDeals);
+    const platform =
+      partial.platform ??
+      rawDeal.retailer ??
+      "Unknown";
 
     return {
-      deals: rankedDeals,
-      coupons: discoveredCoupons,
-      summary: {
-        providers: this.providers.length,
-        discoveredDeals: discoveredDeals.length,
-        discoveredCoupons: discoveredCoupons.length,
-        validDeals: validDeals.length,
-        publishedDeals: rankedDeals.length,
-        rejectedDeals:
-          discoveredDeals.length - validDeals.length,
-      },
+      ...rawDeal,
+
+      id:
+        partial.id ??
+        `${platform}-${Date.now()}-${index}`,
+
+      platform,
+
+      currency:
+        partial.currency ??
+        "INR",
+
+      status:
+        partial.status ??
+        "active",
+
+      score:
+        partial.score ??
+        0,
+
+      metadata:
+        partial.metadata ??
+        {},
+    } as Deal;
+  }
+
+  async run(
+    context: DiscoveryContext = {} as DiscoveryContext,
+  ): Promise<DiscoveryEngineResult> {
+    const startedAt = Date.now();
+
+    const providerResults =
+      await this.discoveryManager.discover(context);
+
+    const aggregate =
+      new DiscoveryAggregator().aggregate(
+        providerResults,
+        startedAt,
+      );
+
+    const processing =
+      await new DealProcessingPipeline(
+        this.validators,
+      ).process(aggregate.deals);
+
+    const durationMs =
+      Date.now() - startedAt;
+
+    const publishableDeals =
+      processing.publishableDeals;
+
+    const deals: Deal[] =
+      publishableDeals.map(
+        (deal, index) =>
+          this.toLegacyDeal(deal, index),
+      );
+
+    const summary = {
+      providersAttempted:
+        aggregate.providersAttempted,
+
+      providersSucceeded:
+        aggregate.providersSucceeded,
+
+      providersFailed:
+        aggregate.providersFailed,
+
+      discoveredDeals:
+        processing.discoveredDeals,
+
+      validatedDeals:
+        processing.validatedDeals,
+
+      validationRejectedDeals:
+        processing.validationRejectedDeals,
+
+      duplicateDeals:
+        processing.duplicateDeals,
+
+      qualityRejectedDeals:
+        processing.qualityRejectedDeals,
+
+      publishedDeals:
+        publishableDeals.length,
+
+      durationMs,
+    };
+
+    return {
+      providersAttempted:
+        summary.providersAttempted,
+
+      providersSucceeded:
+        summary.providersSucceeded,
+
+      providersFailed:
+        summary.providersFailed,
+
+      discoveredDeals:
+        summary.discoveredDeals,
+
+      validatedDeals:
+        summary.validatedDeals,
+
+      publishedDeals:
+        summary.publishedDeals,
+
+      publishableDeals,
+
+      deals,
+
+      summary,
+
+      durationMs,
     };
   }
+
+
+  private registerDefaultProviders(): void {
+
+    const providers = [
+      new AmazonDiscoveryProvider(),
+      new FlipkartDiscoveryProvider(),
+    ];
+
+    for (const provider of providers) {
+
+      try {
+
+        this.register(provider);
+
+      } catch {
+
+        // Ignore duplicate registration
+
+      }
+
+    }
+
+  }
+
 }
