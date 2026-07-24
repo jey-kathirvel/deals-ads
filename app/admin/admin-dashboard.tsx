@@ -57,6 +57,28 @@ export default function AdminDashboard() {
       <div className="form-row"><label>Badge<input value={form.tag||""} onChange={e=>update("tag",e.target.value)}/></label><label>Coupon code<input value={form.code||""} onChange={e=>update("code",e.target.value)}/></label></div><label>Coupon conditions<input value={form.couponTerms||""} onChange={e=>update("couponTerms",e.target.value)} placeholder="Minimum spend, selected cards or users"/></label>
       <div className="form-row"><label>Expiry label<input value={form.expires||""} onChange={e=>update("expires",e.target.value)}/></label><label>Expiry date<input type="date" value={form.expiryDate||""} onChange={e=>update("expiryDate",e.target.value)}/></label></div><label>Status<select value={form.status||"published"} onChange={e=>update("status",e.target.value)}><option value="draft">Draft</option><option value="review">Review</option><option value="published">Published</option><option value="expired">Expired</option></select></label><button className="admin-primary">{form.id?"Update deal":"Save deal"}</button><p className="form-message">{message}</p>
     </form>
-    <section className="catalogue"><div className="catalogue-head"><div><h2>Deal workflow</h2><span>{visible.length} records</span></div><div className="workflow-tabs">{["all","review","published","draft","expired"].map(item=><button className={filter===item?"active":""} onClick={()=>setFilter(item)} key={item}>{item}</button>)}</div></div>{visible.map(deal=><article className="admin-deal workflow-deal" key={deal.id}><div className="admin-deal-icon" style={{background:deal.color}}>{deal.imageUrl?<img src={deal.imageUrl} alt=""/>:deal.emoji}</div><div><span>{deal.platform} · {deal.category} · {deal.source}</span><h3>{deal.title}</h3><p>₹{deal.price.toLocaleString("en-IN")} <s>₹{deal.mrp.toLocaleString("en-IN")}</s> · <b className={`state-${deal.status}`}>{deal.status}</b>{deal.code&&<> · Coupon: <strong>{deal.code}</strong></>}</p><small>Checked {new Date(deal.lastCheckedAt||deal.updatedAt).toLocaleString("en-IN")}{deal.expiryDate&&` · Expires ${deal.expiryDate}`}</small></div><div className="admin-actions">{deal.status!=="published"&&<button className="approve" onClick={()=>setStatus(deal,"published")}>Publish</button>}{deal.status==="published"&&<button onClick={()=>setStatus(deal,"draft")}>Pause</button>}<button onClick={()=>setForm(deal)}>Edit</button><button className="danger" onClick={()=>remove(deal.id)}>Delete</button></div></article>)}</section></div>
+    <section className="catalogue"><div className="catalogue-head"><div><h2>Deal workflow</h2><span>{visible.length} records</span></div><div className="workflow-tabs">{["all","review","published","draft","expired"].map(item=><button className={filter===item?"active":""} onClick={()=>setFilter(item)} key={item}>{item}</button>)}</div></div>{visible.map(deal=><article className="admin-deal workflow-deal" key={deal.id}><div className="admin-deal-icon" style={{background:deal.color}}>
+  {deal.imageUrl ? (
+    <img
+      src={deal.imageUrl}
+      alt={deal.title}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      style={{
+        width:"100%",
+        height:"100%",
+        objectFit:"contain",
+        borderRadius:"10px",
+        background:"#fff",
+        padding:"6px"
+      }}
+      onError={(e)=>{
+        e.currentTarget.style.display="none";
+      }}
+    />
+  ) : (
+    deal.emoji
+  )}
+</div><div><span>{deal.platform} · {deal.category} · {deal.source}</span><h3>{deal.title}</h3><p>₹{deal.price.toLocaleString("en-IN")} <s>₹{deal.mrp.toLocaleString("en-IN")}</s> · <b className={`state-${deal.status}`}>{deal.status}</b>{deal.code&&<> · Coupon: <strong>{deal.code}</strong></>}</p><small>Checked {new Date(deal.lastCheckedAt||deal.updatedAt).toLocaleString("en-IN")}{deal.expiryDate&&` · Expires ${deal.expiryDate}`}</small></div><div className="admin-actions">{deal.status!=="published"&&<button className="approve" onClick={()=>setStatus(deal,"published")}>Publish</button>}{deal.status==="published"&&<button onClick={()=>setStatus(deal,"draft")}>Pause</button>}<button onClick={()=>setForm(deal)}>Edit</button><button className="danger" onClick={()=>remove(deal.id)}>Delete</button></div></article>)}</section></div>
   </main>;
 }

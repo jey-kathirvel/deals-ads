@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { Deal } from "./deal-types";
+import { slugify } from "./slug";
 
 const dataDir = process.env.DEALS_DATA_DIR || path.join(process.cwd(), "data");
 const dataFile = path.join(dataDir, "deals.json");
@@ -139,6 +140,60 @@ function affiliateUrl(value: string, platform: string) {
     if (url.hostname === "amazon.in" || url.hostname.endsWith(".amazon.in")) url.searchParams.set("tag", process.env.AMAZON_PARTNER_TAG);
     return url.toString();
   } catch { return value; }
+}
+
+
+export function getDealSlug(deal: Pick<Deal, "title">): string {
+  return slugify(deal.title);
+}
+
+export async function getDealBySlug(slug: string): Promise<Deal | null> {
+  const normalizedSlug = slugify(decodeURIComponent(slug));
+  const deals = await getDeals();
+
+  return (
+    deals.find((deal) => getDealSlug(deal) === normalizedSlug) ??
+    null
+  );
+}
+
+export async function getRelatedDeals(
+  deal: Deal,
+  limit = 4,
+): Promise<Deal[]> {
+  const safeLimit = Math.max(0, Math.floor(limit));
+  const deals = await getDeals();
+
+  const sameCategory = deals.filter(
+    (item) =>
+      item.id !== deal.id &&
+      item.category.toLowerCase() === deal.category.toLowerCase(),
+  );
+
+  const remaining = deals.filter(
+    (item) =>
+      item.id !== deal.id &&
+      item.category.toLowerCase() !== deal.category.toLowerCase(),
+  );
+
+  return [...sameCategory, ...remaining].slice(0, safeLimit);
+}
+
+
+export async function getPublishedDeals() {
+  const deals = await getDeals();
+
+  return deals
+    .filter(
+      (deal) =>
+        deal.status === "published" &&
+        deal.active,
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() -
+        new Date(a.updatedAt).getTime(),
+    );
 }
 
 export async function deleteDeal(id: number) {
