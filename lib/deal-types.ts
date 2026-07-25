@@ -15,7 +15,9 @@ export type Deal = {
   expires: string;
   url: string;
   active: boolean;
-  source: "manual" | "csv" | "xlsx" | "amazon" | "flipkart" | "affiliate";
+  source: "manual" | "csv" | "xlsx" | "amazon" | "flipkart" | "affiliate" | "quickcommerce";
+  providerItemId?: string;
+  providerPlatform?: string;
   status: "draft" | "review" | "published" | "expired";
   expiryDate: string;
   couponTerms: string;
