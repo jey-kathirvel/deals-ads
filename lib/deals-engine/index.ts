@@ -143,3 +143,5 @@ export * from "./core/flipkart-deal-mapper";
 export * from "./providers/flipkart-discovery-provider";
 
 export * from "./core/discovery-scheduler";
+
+export * from "./core/discovery-scheduler";

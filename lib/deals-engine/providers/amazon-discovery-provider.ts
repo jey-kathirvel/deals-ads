@@ -6,7 +6,7 @@ import type {
 
 import {
   AmazonDealMapper,
-} from "../core";
+} from "../core/amazon-deal-mapper";
 
 import {
   BaseHtmlProvider,
@@ -22,6 +22,7 @@ extends BaseHtmlProvider {
   readonly info = {
     id: "amazon-india",
     name: "Amazon India",
+    version: "1.0.0",
     enabled: true,
   } as const;
 

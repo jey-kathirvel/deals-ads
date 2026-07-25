@@ -9,11 +9,23 @@ import type {
 
 import {
   CheerioHtmlParser,
+} from "../core/cheerio-html-parser";
+
+import {
   DefaultProviderExtractorFactory,
+} from "../core/provider-extractor";
+
+import {
   DefaultProviderNormalizer,
+} from "../core/provider-normalizer";
+
+import {
   FetchProviderHttpClient,
+} from "../core/fetch-provider-http-client";
+
+import {
   ProviderDocumentLoader,
-} from "../core";
+} from "../core/provider-document-loader";
 
 export abstract class BaseHtmlProvider {
 

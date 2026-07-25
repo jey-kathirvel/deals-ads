@@ -1,13 +1,36 @@
 import type {
+  DealValidator,
   DiscoveryContext,
   DiscoveryProvider,
+  ProviderRegistry,
   RawDeal,
 } from "../contracts";
 
 import {
+  CategoryValidator,
+  ExpiryValidator,
+  ImageValidator,
+  PriceValidator,
+  RetailerValidator,
+  TitleValidator,
+  UrlValidator,
+} from "../validators";
+
+import {
+  AmazonDiscoveryProvider,
+} from "../providers/amazon-discovery-provider";
+
+import {
+  FlipkartDiscoveryProvider,
+} from "../providers/flipkart-discovery-provider";
+
+import {
   DealProcessingPipeline,
+} from "./deal-processing-pipeline";
+
+import {
   InMemoryProviderRegistry,
-} from "../core";
+} from "./provider-registry";
 
 export interface DiscoverySchedulerResult {
 
@@ -19,74 +42,155 @@ export interface DiscoverySchedulerResult {
 
   discovered: number;
 
+  validated: number;
+
+  validationRejected: number;
+
+  duplicates: number;
+
+  qualityRejected: number;
+
   published: number;
 
   durationMs: number;
 
   deals: RawDeal[];
+
+  errors: string[];
 }
 
 export class DiscoveryScheduler {
 
-  constructor(
-    private readonly registry =
-      new InMemoryProviderRegistry(),
+  private readonly registry:
+    ProviderRegistry;
 
-    private readonly pipeline =
-      new DealProcessingPipeline(),
-  ) {}
+  private readonly validators:
+    DealValidator[];
+
+  constructor(
+    registry?: ProviderRegistry,
+    validators?: DealValidator[],
+    registerDefaults = true,
+  ) {
+
+    this.registry =
+      registry ??
+      new InMemoryProviderRegistry();
+
+    this.validators =
+      validators ??
+      [
+        new TitleValidator(),
+        new RetailerValidator(),
+        new CategoryValidator(),
+        new ImageValidator(),
+        new UrlValidator(),
+        new PriceValidator(),
+        new ExpiryValidator(),
+      ];
+
+    if (registerDefaults) {
+      this.registerDefaultProviders();
+    }
+  }
 
   async run(
     context: DiscoveryContext,
   ): Promise<DiscoverySchedulerResult> {
 
-    const startedAt = Date.now();
+    const startedAt =
+      Date.now();
 
     const providers =
-      this.registry.all();
+      this.registry.getEnabled();
 
     const executions =
       await Promise.allSettled(
-
         providers.map(
-          provider =>
+          (
+            provider:
+              DiscoveryProvider,
+          ) =>
             provider.discover(
               context,
             ),
         ),
-
       );
 
-    const discovered: RawDeal[] = [];
+    const discoveredDeals:
+      RawDeal[] = [];
+
+    const errors:
+      string[] = [];
 
     let succeeded = 0;
 
     let failed = 0;
 
-    for (const execution of executions) {
+    for (
+      let index = 0;
+      index < executions.length;
+      index++
+    ) {
+
+      const execution =
+        executions[index];
+
+      const provider =
+        providers[index];
 
       if (
         execution.status ===
-        "fulfilled"
+        "rejected"
       ) {
 
-        succeeded++;
+        failed++;
 
-        discovered.push(
-          ...execution.value.deals,
+        errors.push(
+          `${provider.info.id}: ${
+            execution.reason instanceof Error
+              ? execution.reason.message
+              : String(execution.reason)
+          }`,
+        );
+
+        continue;
+      }
+
+      const result =
+        execution.value;
+
+      const providerFailed =
+        result.success === false ||
+        result.errors.length > 0;
+
+      if (providerFailed) {
+
+        failed++;
+
+        errors.push(
+          ...result.errors.map(
+            error =>
+              `${result.providerId}: ${error}`,
+          ),
         );
 
       } else {
 
-        failed++;
+        succeeded++;
 
       }
 
+      discoveredDeals.push(
+        ...result.deals,
+      );
     }
 
-    const published =
-      this.pipeline.process(
-        discovered,
+    const processing =
+      await new DealProcessingPipeline(
+        this.validators,
+      ).process(
+        discoveredDeals,
       );
 
     return {
@@ -99,17 +203,31 @@ export class DiscoveryScheduler {
       failed,
 
       discovered:
-        discovered.length,
+        processing.discoveredDeals,
+
+      validated:
+        processing.validatedDeals,
+
+      validationRejected:
+        processing.validationRejectedDeals,
+
+      duplicates:
+        processing.duplicateDeals,
+
+      qualityRejected:
+        processing.qualityRejectedDeals,
 
       published:
-        published.length,
+        processing.publishableDeals.length,
 
       durationMs:
         Date.now() -
         startedAt,
 
       deals:
-        published,
+        processing.publishableDeals,
+
+      errors,
     };
   }
 
@@ -129,5 +247,36 @@ export class DiscoveryScheduler {
     this.registry.unregister(
       providerId,
     );
+  }
+
+  providers(): DiscoveryProvider[] {
+
+    return this.registry.getAll();
+  }
+
+  private registerDefaultProviders(): void {
+
+    const providers:
+      DiscoveryProvider[] = [
+        new AmazonDiscoveryProvider(),
+        new FlipkartDiscoveryProvider(),
+      ];
+
+    for (
+      const provider of providers
+    ) {
+
+      if (
+        this.registry.get(
+          provider.info.id,
+        )
+      ) {
+        continue;
+      }
+
+      this.registry.register(
+        provider,
+      );
+    }
   }
 }

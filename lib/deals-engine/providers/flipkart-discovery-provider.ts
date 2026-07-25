@@ -6,7 +6,7 @@ import type {
 
 import {
   FlipkartDealMapper,
-} from "../core";
+} from "../core/flipkart-deal-mapper";
 
 import {
   BaseHtmlProvider,
@@ -22,6 +22,7 @@ extends BaseHtmlProvider {
   readonly info = {
     id: "flipkart-india",
     name: "Flipkart India",
+    version: "1.0.0",
     enabled: true,
   } as const;
 
