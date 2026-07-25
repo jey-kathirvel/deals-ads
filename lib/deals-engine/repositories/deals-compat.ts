@@ -6,6 +6,7 @@ import {
 } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { Deal } from "@/lib/deal-types";
+import { withAmazonAssociateTag } from "@/lib/amazon-affiliate-url";
 
 const dataFile = join(
   process.env.DEALS_DATA_DIR || join(process.cwd(), "data"),
@@ -47,7 +48,7 @@ function normalizedDeal(value: unknown): Deal | null {
     imageUrl: item.imageUrl ?? "",
     code: item.code ?? "",
     expires: item.expires ?? "Limited time",
-    url: item.url,
+    url: withAmazonAssociateTag(item.url, item.platform),
     active: item.active ?? true,
     source: item.source ?? "manual",
     status: item.status ?? "published",

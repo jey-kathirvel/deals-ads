@@ -7,6 +7,7 @@ import {
   getDealSlug,
   getRelatedDeals,
 } from "@/lib/deals-store";
+import { withAmazonAssociateTag } from "@/lib/amazon-affiliate-url";
 
 import styles from "./deal-page.module.css";
 
@@ -85,6 +86,7 @@ export default async function DealPage({ params }: PageProps) {
   const savings = Math.max(0, deal.mrp - deal.price);
   const dealPath = `/deal/${getDealSlug(deal)}`;
   const dealUrl = `https://deals.ads-ai.in${dealPath}`;
+  const retailerUrl = withAmazonAssociateTag(deal.url);
 
   const breadcrumbStructuredData = {
     "@context": "https://schema.org",
@@ -201,7 +203,11 @@ export default async function DealPage({ params }: PageProps) {
 
             <div className={styles.rating}>
               <span className={styles.star}>★</span>
-              <strong>{deal.rating}</strong>
+              <strong>
+                {Number.isFinite(deal.rating) && deal.rating > 0
+                  ? deal.rating.toFixed(1)
+                  : "New"}
+              </strong>
               <span>({deal.votes.toLocaleString("en-IN")} shopper votes)</span>
             </div>
 
@@ -226,7 +232,7 @@ export default async function DealPage({ params }: PageProps) {
 
             <a
               className={styles.buyButton}
-              href={deal.url}
+              href={retailerUrl}
               target="_blank"
               rel="nofollow sponsored noopener"
             >
