@@ -42,3 +42,11 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
+
+# Local patch backups
+*.bak
+*.bak.*
+*.patch-*.bak
+.legacy-backups/
+output1
+tsconfig.tsbuildinfo

@@ -1,0 +1,16 @@
+export enum Category {
+  MOBILES = "mobiles",
+  LAPTOPS = "laptops",
+  ELECTRONICS = "electronics",
+  TV = "tv",
+  APPLIANCES = "appliances",
+  FASHION = "fashion",
+  BEAUTY = "beauty",
+  GROCERY = "grocery",
+  HOME = "home",
+  BOOKS = "books",
+  TOYS = "toys",
+  SPORTS = "sports",
+  AUTOMOTIVE = "automotive",
+  OTHER = "other",
+}
