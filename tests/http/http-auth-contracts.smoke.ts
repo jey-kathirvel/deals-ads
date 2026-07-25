@@ -65,8 +65,18 @@ const basic =
 const basicResult =
   await basic.authenticate();
 
+const basicAuthorization =
+  basicResult.headers?.Authorization;
+
+assert.equal(
+  typeof basicAuthorization,
+  "string",
+);
+
 assert.ok(
-  basicResult.headers?.Authorization?.startsWith(
+  String(
+    basicAuthorization,
+  ).startsWith(
     "Basic ",
   ),
 );

@@ -10,3 +10,6 @@ export * from "./http-retry-middleware";
 export * from "./http-auth-types";
 export * from "./http-auth-credentials";
 export * from "./http-auth-strategies";
+export * from "./http-auth-middleware";
+export * from "./http-rate-limit-middleware";
+export * from "./http-circuit-breaker-middleware";
