@@ -1,10 +1,52 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Deal } from "@/lib/deal-types";
 import { slugify } from "@/lib/slug";
 const categories = ["All", "Mobiles", "Electronics", "Fashion", "Home", "Beauty", "Travel"];
 const inr = new Intl.NumberFormat("en-IN");
+
+const formatRating = (rating: number) => {
+  if (!Number.isFinite(rating) || rating <= 0) {
+    return "New";
+  }
+
+  return rating.toFixed(1);
+};
+
+type DealCollection = "daily" | "under99" | "under999";
+
+const collectionDetails: Record<
+  DealCollection,
+  {
+    eyebrow: string;
+    title: string;
+    description: string;
+    action: string;
+  }
+> = {
+  daily: {
+    eyebrow: "Fresh deals today",
+    title: "Daily Deals",
+    description:
+      "Explore today’s active offers selected from our latest deal feed.",
+    action: "Explore daily deals",
+  },
+  under99: {
+    eyebrow: "Pocket-friendly finds",
+    title: "Under ₹99 Deals",
+    description:
+      "Useful everyday products and exciting small-price discoveries.",
+    action: "Explore under ₹99",
+  },
+  under999: {
+    eyebrow: "Big value, smaller price",
+    title: "Under ₹999 Deals",
+    description:
+      "Electronics, fashion, home products and essentials below ₹999.",
+    action: "Explore under ₹999",
+  },
+};
 const scoreDeal = (deal: Deal) => Math.min(98, Math.round(38 + Math.max(0, (1 - deal.price / deal.mrp) * 100) * .55 + deal.rating * 4 + Math.min(deal.votes, 250) * .04));
 type IconName = "search" | "heart" | "sparkles" | "arrow" | "scan" | "chart" | "shield" | "tag" | "star" | "check" | "trending" | "clock";
 const paths: Record<IconName, React.ReactNode> = {
@@ -31,10 +73,206 @@ export default function DealsApp({ initialDeals = [] }: { initialDeals?: Deal[] 
   const [sort, setSort] = useState("Popular");
   const [saved, setSaved] = useState<number[]>([]);
   const [copied, setCopied] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeMenu, setActiveMenu] = useState<
+    "categories" | "stores" | null
+  >(null);
+  const [contactStatus, setContactStatus] = useState<
+    "idle" | "sending" | "success" | "error"
+  >("idle");
+  const [lightningTime, setLightningTime] = useState({
+    hours: "00",
+    minutes: "00",
+    seconds: "00",
+  });
+  const [collection, setCollection] =
+    useState<DealCollection>("daily");
+  const collectionDeals = useMemo(() => {
+    if (collection === "under99") {
+      return initialDeals.filter(
+        (deal) => deal.price > 0 && deal.price <= 99,
+      );
+    }
+
+    if (collection === "under999") {
+      return initialDeals.filter(
+        (deal) => deal.price > 0 && deal.price <= 999,
+      );
+    }
+
+    return initialDeals;
+  }, [collection, initialDeals]);
+
   const filtered = useMemo(() => {
-    const result = initialDeals.filter((deal) => (category === "All" || deal.category === category) && `${deal.title} ${deal.platform}`.toLowerCase().includes(query.toLowerCase()));
-    return [...result].sort((a, b) => sort === "Discount" ? (1 - b.price / b.mrp) - (1 - a.price / a.mrp) : sort === "Price: Low" ? a.price - b.price : b.votes - a.votes);
-  }, [category, query, sort, initialDeals]);
+    const normalizedQuery = query.trim().toLowerCase();
+
+    const result = collectionDeals.filter(
+      (deal) =>
+        (category === "All" ||
+          deal.category.toLowerCase() === category.toLowerCase()) &&
+        `${deal.title} ${deal.platform} ${deal.category}`
+          .toLowerCase()
+          .includes(normalizedQuery),
+    );
+
+    return [...result].sort((a, b) => {
+      if (sort === "Discount") {
+        const aDiscount =
+          a.mrp > 0 ? 1 - a.price / a.mrp : 0;
+        const bDiscount =
+          b.mrp > 0 ? 1 - b.price / b.mrp : 0;
+
+        return bDiscount - aDiscount;
+      }
+
+      if (sort === "Price: Low") {
+        return a.price - b.price;
+      }
+
+      return b.votes - a.votes;
+    });
+  }, [
+    category,
+    query,
+    sort,
+    collectionDeals,
+  ]);
+
+  const collectionCounts = useMemo(
+    () => ({
+      daily: initialDeals.length,
+      under99: initialDeals.filter(
+        (deal) => deal.price > 0 && deal.price <= 99,
+      ).length,
+      under999: initialDeals.filter(
+        (deal) => deal.price > 0 && deal.price <= 999,
+      ).length,
+    }),
+    [initialDeals],
+  );
+  useEffect(() => {
+    const INDIA_OFFSET_MS =
+      5.5 * 60 * 60 * 1000;
+    const LIGHTNING_INTERVAL_MS =
+      6 * 60 * 60 * 1000;
+
+    const updateLightningTimer = () => {
+      const now = Date.now();
+      const indiaNow = now + INDIA_OFFSET_MS;
+
+      const nextIndiaSlot =
+        Math.ceil(
+          indiaNow / LIGHTNING_INTERVAL_MS,
+        ) * LIGHTNING_INTERVAL_MS;
+
+      const nextSlotUtc =
+        nextIndiaSlot - INDIA_OFFSET_MS;
+
+      const remainingSeconds = Math.max(
+        0,
+        Math.floor((nextSlotUtc - now) / 1000),
+      );
+
+      const hours = Math.floor(
+        remainingSeconds / 3600,
+      );
+
+      const minutes = Math.floor(
+        (remainingSeconds % 3600) / 60,
+      );
+
+      const seconds =
+        remainingSeconds % 60;
+
+      setLightningTime({
+        hours: String(hours).padStart(2, "0"),
+        minutes: String(minutes).padStart(2, "0"),
+        seconds: String(seconds).padStart(2, "0"),
+      });
+    };
+
+    updateLightningTimer();
+
+    const interval = window.setInterval(
+      updateLightningTimer,
+      1000,
+    );
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  const stores = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          initialDeals
+            .map((deal) => deal.platform.trim())
+            .filter(Boolean),
+        ),
+      ).sort((a, b) => a.localeCompare(b)),
+    [initialDeals],
+  );
+
+  const chooseCategory = (value: string) => {
+    setCategory(value);
+    setMenuOpen(false);
+    setActiveMenu(null);
+
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector("#deals")
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+    });
+  };
+
+  const chooseStore = (value: string) => {
+    setQuery(value);
+    setCategory("All");
+    setMenuOpen(false);
+    setActiveMenu(null);
+
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector("#deals")
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+    });
+  };
+
+  const submitFeedback = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
+    setContactStatus("sending");
+
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Feedback submission failed");
+      }
+
+      form.reset();
+      setContactStatus("success");
+    } catch {
+      setContactStatus("error");
+    }
+  };
+
   const copyCode = async (code: string) => {
     await navigator.clipboard?.writeText(code);
     setCopied(code);
@@ -46,8 +284,156 @@ export default function DealsApp({ initialDeals = [] }: { initialDeals?: Deal[] 
     <header className="site-header">
       <a className="brand" href="#top" aria-label="Deals home"><span className="brand-mark">%</span><span>deals<span className="brand-dot">.</span><small>ai</small></span></a>
       <div className="search-box"><Icon name="search" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Ask for a product, brand or store" aria-label="Search deals" /><kbd>⌘ K</kbd></div>
-      <nav><a href="#deals">Deals</a><a href="#ai-lab">AI Signals</a><a href="#stores">Stores</a><a href="#about">How it works</a></nav>
-      <button className="saved-button" aria-label={`${saved.length} saved deals`}><Icon name="heart" /> <span>Saved</span> <b>{saved.length}</b></button>
+      <nav
+        className={`main-navigation ${menuOpen ? "open" : ""}`}
+        aria-label="Main navigation"
+      >
+        <a
+          href="#deals"
+          onClick={() => setMenuOpen(false)}
+        >
+          Deals
+        </a>
+
+        <div className="nav-dropdown">
+          <button
+            type="button"
+            className={
+              activeMenu === "categories" ? "active" : ""
+            }
+            onClick={() =>
+              setActiveMenu((current) =>
+                current === "categories"
+                  ? null
+                  : "categories",
+              )
+            }
+          >
+            Categories
+            <span aria-hidden="true">⌄</span>
+          </button>
+
+          <div
+            className={`nav-submenu category-submenu ${
+              activeMenu === "categories" ? "open" : ""
+            }`}
+          >
+            <div className="submenu-heading">
+              <span>Shop by category</span>
+              <small>Explore deals that match your interest</small>
+            </div>
+
+            <div className="submenu-grid">
+              {categories.map((item) => (
+                <button
+                  type="button"
+                  key={item}
+                  onClick={() => chooseCategory(item)}
+                >
+                  <span className="submenu-icon">
+                    {item === "All"
+                      ? "✦"
+                      : item.substring(0, 1)}
+                  </span>
+                  <span>{item}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="nav-dropdown">
+          <button
+            type="button"
+            className={
+              activeMenu === "stores" ? "active" : ""
+            }
+            onClick={() =>
+              setActiveMenu((current) =>
+                current === "stores" ? null : "stores",
+              )
+            }
+          >
+            Stores
+            <span aria-hidden="true">⌄</span>
+          </button>
+
+          <div
+            className={`nav-submenu store-submenu ${
+              activeMenu === "stores" ? "open" : ""
+            }`}
+          >
+            <div className="submenu-heading">
+              <span>Popular stores</span>
+              <small>Browse deals by retailer</small>
+            </div>
+
+            <div className="submenu-grid">
+              {stores.map((store) => (
+                <button
+                  type="button"
+                  key={store}
+                  onClick={() => chooseStore(store)}
+                >
+                  <span className="submenu-icon">
+                    {store.substring(0, 1).toUpperCase()}
+                  </span>
+                  <span>{store}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <a
+          href="#ai-lab"
+          onClick={() => setMenuOpen(false)}
+        >
+          AI Signals
+        </a>
+
+        <a
+          href="#about"
+          onClick={() => setMenuOpen(false)}
+        >
+          How it works
+        </a>
+
+        <a
+          href="#contact"
+          onClick={() => setMenuOpen(false)}
+        >
+          Feedback
+        </a>
+      </nav>
+
+      <div className="header-actions">
+        <button
+          className="saved-button"
+          aria-label={`${saved.length} saved deals`}
+        >
+          <Icon name="heart" />
+          <span>Saved</span>
+          <b>{saved.length}</b>
+        </button>
+
+        <button
+          type="button"
+          className={`mobile-menu-button ${
+            menuOpen ? "active" : ""
+          }`}
+          onClick={() => {
+            setMenuOpen((current) => !current);
+            setActiveMenu(null);
+          }}
+          aria-label="Toggle navigation menu"
+          aria-expanded={menuOpen}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+      </div>
     </header>
 
     <section className="hero" id="top">
@@ -65,8 +451,184 @@ export default function DealsApp({ initialDeals = [] }: { initialDeals?: Deal[] 
     </div></section>
 
     <section className="deals-section" id="deals">
-      <div className="section-head"><div><span className="eyebrow dark"><Icon name="sparkles" /> AI-ASSISTED PICKS</span><h2>Deals worth a closer look</h2><p>Compare savings, ratings and shopper interest at a glance.</p></div><div className="sort"><label htmlFor="sort">Sort by</label><select id="sort" value={sort} onChange={(e) => setSort(e.target.value)}><option>Popular</option><option>Discount</option><option>Price: Low</option></select></div></div>
-      <div className="category-tabs" role="tablist">{categories.map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)} role="tab" aria-selected={category === item}>{item}</button>)}</div>
+      <div className="lightning-deals-bar">
+        <div className="lightning-copy">
+          <span className="lightning-icon">
+            ⚡
+          </span>
+
+          <div>
+            <small>NEXT LIGHTNING DEALS</small>
+            <strong>
+              Fresh offers unlock every 6 hours
+            </strong>
+          </div>
+        </div>
+
+        <div
+          className="lightning-countdown"
+          aria-label={`Next lightning deals in ${lightningTime.hours} hours, ${lightningTime.minutes} minutes and ${lightningTime.seconds} seconds`}
+        >
+          <div>
+            <b>{lightningTime.hours}</b>
+            <span>HRS</span>
+          </div>
+
+          <i>:</i>
+
+          <div>
+            <b>{lightningTime.minutes}</b>
+            <span>MIN</span>
+          </div>
+
+          <i>:</i>
+
+          <div>
+            <b>{lightningTime.seconds}</b>
+            <span>SEC</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="deals-search-panel">
+        <div className="deals-search-copy">
+          <span>
+            <Icon name="search" />
+          </span>
+
+          <div>
+            <strong>Find your perfect deal</strong>
+            <small>
+              Search by product, brand or store
+            </small>
+          </div>
+        </div>
+
+        <div className="deals-search-field">
+          <Icon name="search" />
+
+          <input
+            type="search"
+            value={query}
+            onChange={(event) =>
+              setQuery(event.target.value)
+            }
+            placeholder="Search mobiles, laptops, Amazon, Flipkart..."
+            aria-label="Search products and stores"
+          />
+
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              aria-label="Clear deal search"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      </div>
+      <div
+        className="collection-heroes"
+        aria-label="Special deal collections"
+      >
+        {(Object.keys(collectionDetails) as DealCollection[]).map(
+          (item) => {
+            const details = collectionDetails[item];
+
+            return (
+              <button
+                type="button"
+                key={item}
+                className={`collection-hero collection-${item} ${
+                  collection === item ? "active" : ""
+                }`}
+                onClick={() => {
+                  setCollection(item);
+                  setCategory("All");
+
+                  window.requestAnimationFrame(() => {
+                    document
+                      .querySelector(".deal-results-anchor")
+                      ?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                  });
+                }}
+              >
+                <span className="collection-eyebrow">
+                  {details.eyebrow}
+                </span>
+
+                <strong>{details.title}</strong>
+
+                <p>{details.description}</p>
+
+                <span className="collection-action">
+                  {details.action}
+                  <Icon name="arrow" />
+                </span>
+
+                <b className="collection-count">
+                  {collectionCounts[item]}
+                </b>
+              </button>
+            );
+          },
+        )}
+      </div>
+
+      <div className="deal-results-anchor" />
+
+      <div className="section-head">
+        <div>
+          <span className="eyebrow dark">
+            <Icon name="sparkles" />
+            {collectionDetails[collection].eyebrow}
+          </span>
+
+          <h2>{collectionDetails[collection].title}</h2>
+
+          <p>
+            Compare prices, savings, ratings and shopper interest
+            before visiting the retailer.
+          </p>
+        </div>
+
+        <div className="sort">
+          <label htmlFor="sort">Sort by</label>
+
+          <select
+            id="sort"
+            value={sort}
+            onChange={(event) => setSort(event.target.value)}
+          >
+            <option>Popular</option>
+            <option>Discount</option>
+            <option>Price: Low</option>
+          </select>
+        </div>
+      </div>
+
+      <div
+        className="category-tabs"
+        role="tablist"
+        aria-label="Deal categories"
+      >
+        {categories.map((item) => (
+          <button
+            type="button"
+            key={item}
+            className={category === item ? "active" : ""}
+            onClick={() => setCategory(item)}
+            role="tab"
+            aria-selected={category === item}
+          >
+            <span>{item}</span>
+          </button>
+        ))}
+      </div>
       {filtered.length ? <div className="deal-grid">{filtered.map((deal) => {
         const discount = Math.round((1 - deal.price / deal.mrp) * 100);
         return <article className="deal-card" key={deal.id}
@@ -93,7 +655,7 @@ export default function DealsApp({ initialDeals = [] }: { initialDeals?: Deal[] 
                       }}
                     >
           <div className="product-visual" style={{ background: deal.color }}><span className="deal-tag"><Icon name="tag" />{deal.tag}</span><span className="ai-score"><Icon name="sparkles" /><b>{scoreDeal(deal)}</b><small>AI signal</small></span><button className={saved.includes(deal.id) ? "heart saved" : "heart"} onClick={() => setSaved((items) => items.includes(deal.id) ? items.filter((id) => id !== deal.id) : [...items, deal.id])} aria-label="Save deal"><Icon name="heart" filled={saved.includes(deal.id)} /></button>{deal.imageUrl ? <img className="product-image" src={deal.imageUrl} alt={deal.title} loading="lazy" /> : <span className="product-emoji">{deal.emoji}</span>}</div>
-          <div className="deal-content"><div className="platform-name">{deal.platform}<span><Icon name="star" filled /> {deal.rating}</span></div><h3>{deal.title}</h3><div className="price-row"><strong>₹{inr.format(deal.price)}</strong><s>₹{inr.format(deal.mrp)}</s><b>{discount}% off</b></div>{deal.code ? <button className="coupon" onClick={() => copyCode(deal.code)}><span>{copied === deal.code ? "Copied!" : deal.code}</span><b>{copied === deal.code ? <Icon name="check" /> : "Copy"}</b></button> : <div className="auto-deal"><Icon name="check" /> Deal applied automatically</div>}<div className="deal-footer"><span className="expiry-pill"><Icon name="clock" />{deal.expires}</span><a className="get-deal-button" href={`/deal/${slugify(deal.title)}`}><span>Get deal</span><Icon name="arrow" /></a></div></div>
+          <div className="deal-content"><div className="platform-name">{deal.platform}<span><Icon name="star" filled /> {formatRating(deal.rating)}</span></div><h3>{deal.title}</h3><div className="price-row"><strong>₹{inr.format(deal.price)}</strong><s>₹{inr.format(deal.mrp)}</s><b>{discount}% off</b></div>{deal.code ? <button className="coupon" onClick={() => copyCode(deal.code)}><span>{copied === deal.code ? "Copied!" : deal.code}</span><b>{copied === deal.code ? <Icon name="check" /> : "Copy"}</b></button> : <div className="auto-deal"><Icon name="check" /> Deal applied automatically</div>}<div className="deal-footer"><span className="expiry-pill"><Icon name="clock" />{deal.expires}</span><a className="get-deal-button" href={`/deal/${slugify(deal.title)}`}><span>Get deal</span><Icon name="arrow" /></a></div></div>
         </article>;
       })}</div> : <div className="empty"><span>⌕</span><h3>No matching deals yet</h3><p>Try another search or category.</p></div>}
     </section>
@@ -102,6 +664,200 @@ export default function DealsApp({ initialDeals = [] }: { initialDeals?: Deal[] 
 
     <section className="how" id="about"><div><span className="eyebrow">DEALS, MINUS THE DRAMA</span><h2>From signal<br /><em>to smart choice.</em></h2></div><div className="steps"><article><b>01</b><span><Icon name="scan" /></span><h3>Bring together</h3><p>Selected offers from popular Indian stores appear in one colorful catalogue.</p></article><article><b>02</b><span><Icon name="chart" /></span><h3>Score the value</h3><p>A simple signal combines the displayed savings, rating and shopper interest.</p></article><article><b>03</b><span><Icon name="shield" /></span><h3>Choose confidently</h3><p>Compare the details, then complete your purchase securely on the retailer’s site.</p></article></div></section>
     <section className="newsletter"><div><span>✦</span><div><h2>Let smart deals find you.</h2><p>A short, useful weekly roundup. No spam.</p></div></div><form onSubmit={(e) => e.preventDefault()}><input type="email" placeholder="you@email.com" aria-label="Email address" required /><button>Join the radar →</button></form></section>
-    <footer><a className="brand" href="#top"><span className="brand-mark">%</span><span>deals<span className="brand-dot">.</span></span></a><p>AI-assisted savings for everyday India.<br /><span className="affiliate-disclosure">As an Amazon Associate I earn from qualifying purchases.</span></p><div><a href="#about">About</a><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Contact</a></div><small>© 2026 deals.ads-ai.in</small></footer>
+    <section
+      className="feedback-section"
+      id="contact"
+    >
+      <div className="feedback-intro">
+        <span className="eyebrow dark">
+          FEEDBACK & CONTACT
+        </span>
+
+        <h2>Help us make deal discovery better.</h2>
+
+        <p>
+          Found an incorrect price, expired offer or missing
+          category? Send your feedback and our team will review it.
+        </p>
+
+        <div className="feedback-contact-cards">
+          <article>
+            <span>✉</span>
+            <div>
+              <small>Email</small>
+              <a href="mailto:tech@ads-ai.in">
+                tech@ads-ai.in
+              </a>
+            </div>
+          </article>
+
+          <article>
+            <span>◉</span>
+            <div>
+              <small>WhatsApp</small>
+              <a
+                href="https://wa.me/916383777055"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                +91 6383 777 055
+              </a>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <div className="feedback-form-card">
+        <form
+          onSubmit={submitFeedback}
+          noValidate
+        >
+          {contactStatus === "success" && (
+            <div
+              className="form-status success"
+              role="status"
+            >
+              Thank you. Your feedback was sent successfully.
+            </div>
+          )}
+
+          {contactStatus === "error" && (
+            <div
+              className="form-status error"
+              role="alert"
+            >
+              We could not send your feedback. Please try again.
+            </div>
+          )}
+
+          <div className="feedback-form-grid">
+            <label>
+              <span>Full name</span>
+              <input
+                name="name"
+                type="text"
+                placeholder="Your full name"
+                autoComplete="name"
+                maxLength={100}
+                required
+              />
+            </label>
+
+            <label>
+              <span>Email address</span>
+              <input
+                name="email"
+                type="email"
+                placeholder="you@example.com"
+                autoComplete="email"
+                maxLength={150}
+                required
+              />
+            </label>
+          </div>
+
+          <div className="feedback-form-grid">
+            <label>
+              <span>Feedback type</span>
+              <select
+                name="service"
+                defaultValue=""
+                required
+              >
+                <option
+                  value=""
+                  disabled
+                >
+                  Select feedback type
+                </option>
+                <option value="Incorrect deal">
+                  Incorrect deal
+                </option>
+                <option value="Expired offer">
+                  Expired offer
+                </option>
+                <option value="Missing category">
+                  Missing category
+                </option>
+                <option value="Store request">
+                  Store request
+                </option>
+                <option value="General feedback">
+                  General feedback
+                </option>
+              </select>
+            </label>
+
+            <label>
+              <span>Deal URL</span>
+              <input
+                name="company"
+                type="url"
+                placeholder="Optional deal link"
+                maxLength={500}
+              />
+            </label>
+          </div>
+
+          <label>
+            <span>Your feedback</span>
+            <textarea
+              name="message"
+              rows={6}
+              placeholder="Tell us what we should correct or improve..."
+              maxLength={3000}
+              required
+            />
+          </label>
+
+          <div
+            className="feedback-honeypot"
+            aria-hidden="true"
+          >
+            <label>
+              Website
+              <input
+                name="website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+              />
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            className="feedback-submit"
+            disabled={contactStatus === "sending"}
+          >
+            {contactStatus === "sending"
+              ? "Sending feedback..."
+              : "Send feedback"}
+            <span aria-hidden="true">→</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <footer><a className="brand" href="#top"><span className="brand-mark">%</span><span>deals<span className="brand-dot">.</span></span></a><p>AI-assisted savings for everyday India.<br /><span className="affiliate-disclosure">As an Amazon Associate I earn from qualifying purchases.</span></p><div><a href="#about">About</a><a href="#">Privacy</a><a href="#">Terms</a><a href="#contact">Contact</a></div><small>© 2026 deals.ads-ai.in</small><div className="footer-signature">
+        <span>
+          Handcrafted by
+          <a
+            href="https://ads-ai.in"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            ADS AI
+          </a>
+        </span>
+
+        <i />
+
+        <span>
+          We
+          <b aria-label="love">♥</b>
+          India 🇮🇳
+        </span>
+      </div></footer>
   </main>;
 }

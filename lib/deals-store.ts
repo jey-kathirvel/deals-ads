@@ -1,4 +1,5 @@
 import type { Deal } from "./deal-types";
+import { withAmazonAssociateTag } from "./amazon-affiliate-url";
 import {
   deleteLegacyDeal,
   getLegacyDeals,
@@ -123,9 +124,11 @@ function canonical(value: string) {
   catch { return value.toLowerCase().split("?")[0]; }
 }
 
-function affiliateUrl(value: string, platform: string) {
-  void platform;
-  return value;
+function affiliateUrl(
+  value: string,
+  platform: string,
+) {
+  return withAmazonAssociateTag(value, platform);
 }
 
 export function getDealSlug(deal: Pick<Deal, "title">): string {
