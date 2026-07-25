@@ -33,6 +33,8 @@ export async function saveDeal(input: Partial<Deal> & Pick<Deal, "title" | "plat
     url: affiliateUrl(input.url.trim(), input.platform), active: input.active ?? existing?.active ?? true, source: input.source || existing?.source || "manual",
     status: input.status || existing?.status || "published", expiryDate: input.expiryDate || existing?.expiryDate || "",
     couponTerms: input.couponTerms?.trim() || existing?.couponTerms || "", sourceUrl: input.sourceUrl?.trim() || existing?.sourceUrl || input.url.trim(),
+    providerItemId: input.providerItemId?.trim() || existing?.providerItemId,
+    providerPlatform: input.providerPlatform?.trim() || existing?.providerPlatform,
     lastCheckedAt: input.lastCheckedAt || new Date().toISOString(), importedAt: existing?.importedAt || input.importedAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -108,6 +110,8 @@ export async function importDeals(rows: Array<Record<string, string>>, options: 
       tag: row.tag || "Imported deal", code: row.code || row.coupon || "", couponTerms: row.couponTerms || row.terms || "",
       expires: row.expires || "Limited time", expiryDate: row.expiryDate || "", rating: Number(row.rating || 4.5),
       votes: Number(row.votes || 0), active: options.publish ?? false, status: options.publish ? "published" : "review", source: options.source || "csv", sourceUrl: row.sourceUrl || url,
+      providerItemId: row.providerItemId || "",
+      providerPlatform: row.providerPlatform || platform,
     });
     imported.push(deal); seenUrls.add(canonical(deal.url)); seenTitles.add(titleKey);
   }
@@ -120,12 +124,8 @@ function canonical(value: string) {
 }
 
 function affiliateUrl(value: string, platform: string) {
-  if (platform.toLowerCase() !== "amazon" || !process.env.AMAZON_PARTNER_TAG) return value;
-  try {
-    const url = new URL(value);
-    if (url.hostname === "amazon.in" || url.hostname.endsWith(".amazon.in")) url.searchParams.set("tag", process.env.AMAZON_PARTNER_TAG);
-    return url.toString();
-  } catch { return value; }
+  void platform;
+  return value;
 }
 
 export function getDealSlug(deal: Pick<Deal, "title">): string {

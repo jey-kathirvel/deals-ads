@@ -1,333 +1,138 @@
-import { getDb } from "@/db";
 import {
-  dealCategories,
-  deals,
-} from "@/db/schema";
+  mkdir,
+  readFile,
+  rename,
+  writeFile,
+} from "node:fs/promises";
+import { dirname, join } from "node:path";
 import type { Deal } from "@/lib/deal-types";
-import {
-  desc,
-  eq,
-} from "drizzle-orm";
 
-import { dbToLegacyDeal } from "../mappers/deal-mapper";
+const dataFile = join(
+  process.env.DEALS_DATA_DIR || join(process.cwd(), "data"),
+  "deals.json",
+);
 
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 120) || "deal";
+let mutationQueue: Promise<void> = Promise.resolve();
+
+function clone(deal: Deal): Deal {
+  return { ...deal };
 }
 
-function canonicalUrl(value: string): string {
-  const trimmed = value.trim();
-
-  try {
-    const url = new URL(trimmed);
-
-    const removableParameters = [
-      "tag",
-      "ascsubtag",
-      "affid",
-      "affExtParam1",
-      "affExtParam2",
-      "utm_source",
-      "utm_medium",
-      "utm_campaign",
-      "utm_term",
-      "utm_content",
-      "ref",
-      "ref_",
-    ];
-
-    for (const parameter of removableParameters) {
-      url.searchParams.delete(parameter);
-    }
-
-    url.hash = "";
-
-    return url.toString();
-  } catch {
-    return trimmed;
-  }
-}
-
-function fingerprint(value: string): string {
-  let hash = 2166136261;
-
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-
-    hash = Math.imul(hash, 16777619);
-  }
-
-  return `legacy-${(hash >>> 0).toString(16).padStart(8, "0")}`;
-}
-
-function indiaDateString(date = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-}
-
-function validDate(value: string): Date | null {
-  if (!value.trim()) {
+function normalizedDeal(value: unknown): Deal | null {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Partial<Deal>;
+  if (
+    typeof item.id !== "number" ||
+    typeof item.title !== "string" ||
+    typeof item.platform !== "string" ||
+    typeof item.category !== "string" ||
+    typeof item.price !== "number" ||
+    typeof item.mrp !== "number" ||
+    typeof item.url !== "string"
+  ) {
     return null;
   }
-
-  const date = new Date(value);
-
-  return Number.isNaN(date.getTime())
-    ? null
-    : date;
+  return {
+    id: item.id,
+    title: item.title,
+    platform: item.platform,
+    category: item.category,
+    price: item.price,
+    mrp: item.mrp,
+    rating: Number(item.rating ?? 0),
+    votes: Number(item.votes ?? 0),
+    tag: item.tag ?? "New deal",
+    color: item.color ?? "#e7f1ec",
+    emoji: item.emoji ?? "DEAL",
+    imageUrl: item.imageUrl ?? "",
+    code: item.code ?? "",
+    expires: item.expires ?? "Limited time",
+    url: item.url,
+    active: item.active ?? true,
+    source: item.source ?? "manual",
+    status: item.status ?? "published",
+    expiryDate: item.expiryDate ?? "",
+    couponTerms: item.couponTerms ?? "",
+    sourceUrl: item.sourceUrl ?? item.url,
+    lastCheckedAt: item.lastCheckedAt ?? item.updatedAt ?? new Date().toISOString(),
+    importedAt: item.importedAt ?? item.updatedAt ?? new Date().toISOString(),
+    updatedAt: item.updatedAt ?? new Date().toISOString(),
+    providerItemId: item.providerItemId,
+    providerPlatform: item.providerPlatform,
+  };
 }
 
-function databaseStatus(deal: Deal) {
-  if (deal.status === "expired") {
-    return "EXPIRED" as const;
+async function readDeals(): Promise<Deal[]> {
+  try {
+    const parsed: unknown = JSON.parse(await readFile(dataFile, "utf8"));
+    return Array.isArray(parsed)
+      ? parsed.map(normalizedDeal).filter((deal): deal is Deal => deal !== null)
+      : [];
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
   }
-
-  if (!deal.active) {
-    return "ARCHIVED" as const;
-  }
-
-  return "ACTIVE" as const;
 }
 
-function metadataJson(deal: Deal): string {
-  return JSON.stringify({
-    tag: deal.tag,
-    color: deal.color,
-    emoji: deal.emoji,
-    code: deal.code,
-    expires: deal.expires,
-    active: deal.active,
-    source: deal.source,
-    status: deal.status,
-    expiryDate: deal.expiryDate,
-    couponTerms: deal.couponTerms,
-    sourceUrl: deal.sourceUrl,
-    lastCheckedAt: deal.lastCheckedAt,
-    importedAt: deal.importedAt,
+async function writeDeals(deals: readonly Deal[]): Promise<void> {
+  await mkdir(dirname(dataFile), { recursive: true });
+  const temporaryFile = `${dataFile}.${process.pid}.tmp`;
+  await writeFile(temporaryFile, `${JSON.stringify(deals, null, 2)}\n`, {
+    encoding: "utf8",
+    mode: 0o600,
   });
+  await rename(temporaryFile, dataFile);
 }
 
-async function resolveCategoryId(
-  categoryName: string,
-): Promise<number | null> {
-  const db = getDb();
-
-  const name = categoryName.trim() || "General";
-  const slug = slugify(name);
-
-  const existing = await db
-    .select({
-      id: dealCategories.id,
-    })
-    .from(dealCategories)
-    .where(eq(dealCategories.slug, slug))
-    .limit(1);
-
-  if (existing[0]) {
-    return existing[0].id;
-  }
-
-  const inserted = await db
-    .insert(dealCategories)
-    .values({
-      name,
-      slug,
-      isActive: true,
-      updatedAt: new Date(),
-    })
-    .returning({
-      id: dealCategories.id,
-    });
-
-  return inserted[0]?.id ?? null;
+async function mutate<T>(
+  operation: (deals: Deal[]) => Promise<T> | T,
+): Promise<T> {
+  let resolveResult: (value: T) => void = () => undefined;
+  let rejectResult: (reason: unknown) => void = () => undefined;
+  const result = new Promise<T>((resolve, reject) => {
+    resolveResult = resolve;
+    rejectResult = reject;
+  });
+  mutationQueue = mutationQueue.then(async () => {
+    try {
+      const deals = await readDeals();
+      const value = await operation(deals);
+      await writeDeals(deals);
+      resolveResult(value);
+    } catch (error) {
+      rejectResult(error);
+    }
+  });
+  return result;
 }
 
 export async function getLegacyDeals(): Promise<Deal[]> {
-  const db = getDb();
-
-  const rows = await db
-    .select({
-      deal: deals,
-      categoryName: dealCategories.name,
-    })
-    .from(deals)
-    .leftJoin(
-      dealCategories,
-      eq(deals.categoryId, dealCategories.id),
-    )
-    .orderBy(desc(deals.createdAt));
-
-  return rows.map((row) =>
-    dbToLegacyDeal({
-      ...row.deal,
-      categoryName: row.categoryName,
-    }),
-  );
+  await mutationQueue;
+  return (await readDeals()).map(clone);
 }
 
-export async function persistLegacyDeal(
-  deal: Deal,
-): Promise<Deal> {
-  const db = getDb();
-
-  const now = new Date();
-  const normalizedUrl = canonicalUrl(
-    deal.sourceUrl || deal.url,
-  );
-
-  const categoryId = await resolveCategoryId(
-    deal.category,
-  );
-
-  const expiry = validDate(deal.expiryDate);
-
-  const values = {
-    externalId: null,
-
-    sourceFingerprint: fingerprint(
-      `${deal.platform.toLowerCase()}|${normalizedUrl}`,
-    ),
-
-    platform: deal.platform.trim(),
-
-    merchantName: deal.platform.trim(),
-
-    categoryId,
-
-    title: deal.title.trim(),
-
-    slug:
-      deal.id > 0
-        ? `${slugify(deal.title)}-${deal.id}`
-        : `${slugify(deal.title)}-${fingerprint(normalizedUrl).slice(-8)}`,
-
-    description: deal.couponTerms || null,
-
-    imageUrl: deal.imageUrl || null,
-
-    originalUrl:
-      deal.sourceUrl.trim() ||
-      deal.url.trim(),
-
-    normalizedUrl,
-
-    redirectUrl: deal.url.trim(),
-
-    currentPrice: Number(deal.price),
-
-    originalPrice: Number(deal.mrp),
-
-    discountPercent:
-      deal.mrp > 0
-        ? Math.max(
-            0,
-            Math.round(
-              ((deal.mrp - deal.price) /
-                deal.mrp) *
-                10000,
-            ) / 100,
-          )
-        : null,
-
-    currency: "INR",
-
-    rating: Number.isFinite(deal.rating)
-      ? deal.rating
-      : null,
-
-    reviewCount: Number.isFinite(deal.votes)
-      ? Math.max(0, Math.trunc(deal.votes))
-      : 0,
-
-    status: databaseStatus(deal),
-
-    qualityScore: 0,
-
-    discoveryDate: indiaDateString(
-      validDate(deal.importedAt) ?? now,
-    ),
-
-    publishedAt:
-      deal.status === "published"
-        ? validDate(deal.importedAt) ?? now
-        : null,
-
-    expiresAt: expiry,
-
-    expiredAt:
-      deal.status === "expired"
-        ? now
-        : null,
-
-    archivedAt:
-      !deal.active &&
-      deal.status !== "expired"
-        ? now
-        : null,
-
-    metadataJson: metadataJson(deal),
-
-    updatedAt: now,
-  };
-
-  if (deal.id > 0) {
-    const updated = await db
-      .update(deals)
-      .set(values)
-      .where(eq(deals.id, deal.id))
-      .returning();
-
-    if (!updated[0]) {
-      throw new Error(
-        `Deal ${deal.id} was not found.`,
-      );
-    }
-
-    return dbToLegacyDeal({
-      ...updated[0],
-      categoryName: deal.category,
-    });
-  }
-
-  const inserted = await db
-    .insert(deals)
-    .values({
-      ...values,
-      createdAt:
-        validDate(deal.importedAt) ?? now,
-      discoveredAt:
-        validDate(deal.importedAt) ?? now,
-    })
-    .returning();
-
-  if (!inserted[0]) {
-    throw new Error(
-      "D1 did not return the inserted deal.",
-    );
-  }
-
-  return dbToLegacyDeal({
-    ...inserted[0],
-    categoryName: deal.category,
+export async function persistLegacyDeal(deal: Deal): Promise<Deal> {
+  return mutate((deals) => {
+    const now = new Date().toISOString();
+    const index = deal.id > 0
+      ? deals.findIndex((item) => item.id === deal.id)
+      : -1;
+    const persisted = {
+      ...clone(deal),
+      id: index >= 0
+        ? deals[index].id
+        : Math.max(0, ...deals.map((item) => item.id)) + 1,
+      updatedAt: now,
+    };
+    if (index >= 0) deals[index] = persisted;
+    else deals.push(persisted);
+    return clone(persisted);
   });
 }
 
-export async function deleteLegacyDeal(
-  id: number,
-): Promise<void> {
-  const db = getDb();
-
-  await db
-    .delete(deals)
-    .where(eq(deals.id, id));
+export async function deleteLegacyDeal(id: number): Promise<void> {
+  await mutate((deals) => {
+    const index = deals.findIndex((deal) => deal.id === id);
+    if (index >= 0) deals.splice(index, 1);
+  });
 }

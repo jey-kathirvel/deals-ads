@@ -16,6 +16,8 @@ type LegacyMetadata = Partial<
     | "sourceUrl"
     | "lastCheckedAt"
     | "importedAt"
+    | "providerItemId"
+    | "providerPlatform"
   >
 >;
 
@@ -86,6 +88,7 @@ function legacySource(metadata: LegacyMetadata): Deal["source"] {
     source === "amazon" ||
     source === "flipkart" ||
     source === "affiliate"
+    || source === "quickcommerce"
   ) {
     return source;
   }
@@ -175,6 +178,10 @@ export function dbToLegacyDeal(row: any): Deal {
     importedAt:
       metadata.importedAt ??
       isoDate(row.createdAt),
+
+    providerItemId: metadata.providerItemId,
+
+    providerPlatform: metadata.providerPlatform,
 
     updatedAt: isoDate(row.updatedAt),
   };
