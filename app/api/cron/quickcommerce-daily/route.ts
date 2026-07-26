@@ -47,7 +47,10 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!isSchedulerRunDue()) {
+  const url = new URL(request.url);
+  const force = url.searchParams.get("force") === "1";
+
+  if (!force && !isSchedulerRunDue()) {
     return Response.json({
       success: true,
       skipped: true,
