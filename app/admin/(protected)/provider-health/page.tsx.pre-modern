@@ -1,0 +1,91 @@
+
+import PageHeader from "@/components/ui/PageHeader";
+"use client";
+
+import {useEffect,useState} from "react";
+
+export default function ProviderHealth(){
+
+const[data,setData]=useState<any>();
+
+async function load(){
+
+const r=await fetch("/api/admin/provider-health",{cache:"no-store"});
+
+setData(await r.json());
+
+}
+
+useEffect(()=>{
+
+load();
+
+const t=setInterval(load,5000);
+
+return () => clearInterval(t);
+
+},[]);
+
+if(!data) return null;
+
+const p=data.quickcommerce;
+
+return(
+
+<div className="max-w-6xl mx-auto p-8">
+
+<h1 className="text-3xl font-bold mb-8">
+
+Quickcommerce Provider Health
+
+</h1>
+
+<div className="grid grid-cols-4 gap-4">
+
+<Card title="Status" value={p.status}/>
+
+<Card title="HTTP" value={p.lastHttpStatus??"-"}/>
+
+<Card title="Response" value={p.lastResponseTimeMs+" ms"}/>
+
+<Card title="Requests" value={p.totalRequests}/>
+
+<Card title="Success" value={p.successfulRequests}/>
+
+<Card title="Failed" value={p.failedRequests}/>
+
+<Card title="Last Success" value={p.lastSuccess??"-"}/>
+
+<Card title="Last Failure" value={p.lastFailure??"-"}/>
+
+</div>
+
+</div>
+
+);
+
+}
+
+function Card({title,value}:{title:string,value:any}){
+
+return(
+
+<div className="border rounded-lg p-4">
+
+<div className="text-sm text-gray-500">
+
+{title}
+
+</div>
+
+<div className="font-bold text-xl break-all">
+
+{String(value)}
+
+</div>
+
+</div>
+
+);
+
+}

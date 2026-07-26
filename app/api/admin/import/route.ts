@@ -1,9 +1,26 @@
+import { requireAdminSession } from "@/lib/auth/guard";
 import { importDeals } from "@/lib/deals-store";
 import { isAdminRequest, unauthorized } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+
+  try{
+    await requireAdminSession();
+  }catch{
+    return Response.json(
+      {
+        success:false,
+        message:"Unauthorized"
+      },
+      {
+        status:401
+      }
+    );
+  }
+
+
   if (!isAdminRequest(request)) return unauthorized();
   const text = await request.text();
   const rows = parseCsv(text);
