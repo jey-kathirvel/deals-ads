@@ -44,6 +44,74 @@ function discount(product: QuickCommerceProduct): number {
   return Math.round(((product.mrp - product.offerPrice) / product.mrp) * 100);
 }
 
+/**
+ * Detects genuine mobile-phone products from the product title.
+ *
+ * Accessories such as chargers, cables, covers, tempered glass and power
+ * banks must remain in Electronics even when they were discovered through a
+ * mobile-related provider search.
+ */
+function isMobilePhoneProduct(
+  product: QuickCommerceProduct,
+): boolean {
+  const title = product.name
+    .toLowerCase()
+    .replace(/[()[\],|/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  /*
+   * Reject accessories and compatible products before considering brand or
+   * phone-related words. A title mentioning iPhone, Galaxy, OnePlus or
+   * smartphone compatibility is not necessarily a mobile phone.
+   */
+  const accessoryPattern =
+    /\b(?:accessor(?:y|ies)|adapter|back cover|battery|cable|case|charger|charging|connector|cover|earbuds?|glass|headphones?|headsets?|holder|keyboard|lightning|mount|mouse|neckband|power bank|protector|remote|replacement|screen guard|screen protector|skin|stand|tempered|tv remote|wall charger|wireless keyboard)\b/;
+
+  const compatibilityPattern =
+    /\b(?:compatible|compatibility|designed for|for iphone|for samsung|for galaxy|for oneplus|for realme|for redmi|for vivo|for oppo|for poco|for smartphone|works with)\b/;
+
+  if (
+    accessoryPattern.test(title) ||
+    compatibilityPattern.test(title)
+  ) {
+    return false;
+  }
+
+  /*
+   * Strong generic indicators where the product explicitly identifies itself
+   * as a phone.
+   */
+  if (
+    /\b(?:5g|4g)?\s*(?:smartphone|mobile phone|feature phone)\b/.test(
+      title,
+    )
+  ) {
+    return true;
+  }
+
+  /*
+   * Apple phone titles must include iPhone followed by a recognisable model
+   * number or model family. This prevents generic iPhone accessories from
+   * becoming mobile-phone deals.
+   */
+  if (
+    /\biphone\s*(?:se|x|xr|xs|11|12|13|14|15|16|17)(?:\s*(?:mini|plus|pro|max|e))?\b/.test(
+      title,
+    )
+  ) {
+    return true;
+  }
+
+  /*
+   * Android brands require a recognisable handset model family or model code.
+   */
+  const androidPhonePattern =
+    /\b(?:samsung\s+galaxy\s+(?:a|f|m|s|z|note)\s*\d+|oneplus\s+(?:nord|open|\d+[a-z]?)|realme\s+(?:narzo|gt|c|p|number|\d+)[\s-]*[a-z0-9]*|redmi\s+(?:note|a|k|number|\d+)[\s-]*[a-z0-9]*|poco\s+(?:c|f|m|x)\s*\d+|vivo\s+(?:t|v|x|y)\s*\d+|oppo\s+(?:a|f|find|k|reno)\s*[a-z0-9]+|google\s+pixel\s+\d+|pixel\s+\d+|nothing\s+phone\s*\(?\d+[a-z]?\)?|motorola\s+(?:edge|razr|moto\s+[eg])\s*[a-z0-9]+|moto\s+[eg]\s*\d+|iqoo\s+(?:neo|z|\d+)\s*[a-z0-9]*|infinix\s+(?:gt|hot|note|smart|zero)\s*[a-z0-9]+|tecno\s+(?:camon|phantom|pova|spark)\s*[a-z0-9]+|lava\s+(?:agni|blaze|storm|yuva)\s*[a-z0-9]+|nokia\s+(?:c|g|x|\d+)\s*[a-z0-9]+)\b/;
+
+  return androidPhonePattern.test(title);
+}
+
 function categoryFor(keyword: string): string {
   const normalized = keyword.toLowerCase();
   if (/beauty|skin|makeup/.test(normalized)) return "Beauty";
@@ -79,12 +147,9 @@ function productTypeFor(
   )
     return "Smart Watches";
 
-  if (
-    /\bmobile phone\b|\bsmartphone\b|\biphone\b|\bsamsung galaxy\b|\boneplus\b|\brealme\b|\bredmi\b|\bvivo\b|\boppo\b|\bpoco\b/.test(
-      value,
-    )
-  )
+  if (isMobilePhoneProduct(product)) {
     return "Mobile Phones";
+  }
 
   if (
     /\bsmart tv\b|\bandroid tv\b|\bgoogle tv\b|\btelevision\b|\bqled\b|\boled\b|\bled tv\b|\b4k tv\b|\bultra hd.*tv\b|\b\d{2,3}\s*(?:cm|inch|inches).*tv\b/.test(
@@ -282,15 +347,36 @@ function publicationIdentity(product: QuickCommerceProduct): {
   };
 }
 
+function publicCategoryFor(
+  product: QuickCommerceProduct,
+  detectedCategory: string,
+  productType: string,
+): string {
+  if (
+    productType === "Mobile Phones" &&
+    isMobilePhoneProduct(product)
+  ) {
+    return "Mobiles";
+  }
+
+  return detectedCategory;
+}
+
 function toRow(
   product: QuickCommerceProduct,
   category: string,
+  productType: string,
 ): Record<string, string> {
   const saving = discount(product);
+  const publicCategory = publicCategoryFor(
+    product,
+    category,
+    productType,
+  );
   return {
     title: product.name,
     platform: product.platform,
-    category,
+    category: publicCategory,
     price: String(product.offerPrice),
     mrp: String(product.mrp),
     rating: String(product.rating),
@@ -340,16 +426,28 @@ export class QuickCommerceDailyDealsService {
             pincode: options.pincode,
           });
           for (const product of products) {
+            const productType = productTypeFor(product, keyword);
+
+            /*
+             * Genuine mobile phones often have smaller percentage discounts
+             * than accessories. Permit them from 1% while preserving the
+             * configured minimum discount for every other product type.
+             */
+            const requiredDiscount =
+              productType === "Mobile Phones"
+                ? Math.min(options.minimumDiscountPercent, 1)
+                : options.minimumDiscountPercent;
+
             if (
               product.available &&
               product.images.length > 0 &&
               product.offerPrice > 0 &&
-              discount(product) >= options.minimumDiscountPercent
+              discount(product) >= requiredDiscount
             ) {
               candidates.set(key(product), {
                 product,
                 category: categoryFor(keyword),
-                productType: productTypeFor(product, keyword),
+                productType,
               });
             }
           }
@@ -386,8 +484,20 @@ export class QuickCommerceDailyDealsService {
 
     const rankedCandidates = [...candidates.values()].sort((left, right) => {
       /*
-       * Electronics are intentionally prioritised so mobile, television and
-       * computer results are not pushed outside the global daily import limit.
+       * Genuine mobile phones are intentionally considered first so they are
+       * not pushed outside the global daily import limit by accessories.
+       */
+      const mobilePhoneDifference =
+        Number(right.productType === "Mobile Phones") -
+        Number(left.productType === "Mobile Phones");
+
+      if (mobilePhoneDifference !== 0) {
+        return mobilePhoneDifference;
+      }
+
+      /*
+       * Electronics are then prioritised so television and computer results
+       * are not pushed outside the global daily import limit.
        */
       const categoryDifference =
         Number(right.category === "Electronics") -
@@ -460,6 +570,17 @@ export class QuickCommerceDailyDealsService {
         selected: ranked.length,
         finalLimit,
         maximumPerProductType,
+        candidateProductTypes: Object.fromEntries(
+          [...rankedCandidates.reduce((counts, candidate) => {
+            counts.set(
+              candidate.productType,
+              (counts.get(candidate.productType) ?? 0) + 1,
+            );
+            return counts;
+          }, new Map<string, number>()).entries()].sort((left, right) =>
+            left[0].localeCompare(right[0]),
+          ),
+        ),
         productTypes: Object.fromEntries(
           [...productTypeCounts.entries()].sort((left, right) =>
             left[0].localeCompare(right[0]),
@@ -469,7 +590,9 @@ export class QuickCommerceDailyDealsService {
     );
 
     const importResult = await importDeals(
-      ranked.map(({ product, category }) => toRow(product, category)),
+      ranked.map(({ product, category, productType }) =>
+        toRow(product, category, productType),
+      ),
       { publish: true, source: "quickcommerce" },
     );
 
