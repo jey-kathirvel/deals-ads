@@ -1,6 +1,7 @@
 import {
   QuickCommerceClient,
   QuickCommerceDailyDealsService,
+  quickCommerceGroceryOptionsFromEnvironment,
   quickCommerceOptionsFromEnvironment,
 } from "@/lib/quickcommerce";
 import { acquireLock, releaseLock } from "./job-lock";
@@ -18,6 +19,7 @@ interface ProviderImportResult {
 
 async function executeProviderImport(
   progress: (current: number, total: number) => void,
+  mode: "general" | "grocery" = "general",
 ): Promise<ProviderImportResult> {
   const apiKey = process.env.QUICKCOMMERCE_API_KEY?.trim();
 
@@ -36,7 +38,11 @@ async function executeProviderImport(
 
   progress(25, 100);
 
-  const result = await service.run(quickCommerceOptionsFromEnvironment());
+  const result = await service.run(
+    mode === "grocery"
+      ? quickCommerceGroceryOptionsFromEnvironment()
+      : quickCommerceOptionsFromEnvironment(),
+  );
 
   progress(90, 100);
 
@@ -49,7 +55,9 @@ async function executeProviderImport(
     deleted: result.deleted,
     failed,
     message: [
-      "QuickCommerce daily import completed.",
+      mode === "grocery"
+        ? "Isolated Grocery daily import completed."
+        : "QuickCommerce daily import completed.",
       `${result.checked} existing deals checked.`,
       `${result.deleted} inactive or expired deals deleted.`,
       `${result.retainedOnError} deals retained after provider errors.`,
@@ -66,16 +74,25 @@ export async function runDealsJob(
   acquireLock(run.id);
 
   try {
-    if (type !== "quickcommerce-import" && type !== "full-import") {
+    if (
+      type !== "quickcommerce-import" &&
+      type !== "grocery-import" &&
+      type !== "full-import"
+    ) {
       throw new Error(`Unsupported deals job type: ${type}`);
     }
 
-    const result = await executeProviderImport((current, total) => {
-      updateRun(run.id, {
-        progress: current,
-        total,
-      });
-    });
+    const result = await executeProviderImport(
+      (current, total) => {
+        updateRun(run.id, {
+          progress: current,
+          total,
+        });
+      },
+      type === "grocery-import"
+        ? "grocery"
+        : "general",
+    );
 
     finishRun(run.id, result.failed > 0 ? "partial_success" : "success", {
       progress: 100,
