@@ -1,0 +1,149 @@
+
+import PageHeader from "@/components/ui/PageHeader";
+"use client";
+
+import {useState} from "react";
+
+export default function ProfilePage(){
+
+const[currentPassword,setCurrent]=useState("");
+
+const[newPassword,setNew]=useState("");
+
+const[confirmPassword,setConfirm]=useState("");
+
+const[msg,setMsg]=useState("");
+
+const[err,setErr]=useState("");
+
+async function save(e:any){
+
+e.preventDefault();
+
+setErr("");
+
+setMsg("");
+
+if(newPassword!==confirmPassword){
+
+setErr("Passwords do not match.");
+
+return;
+
+}
+
+const r=await fetch(
+"/api/admin/change-password",
+{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+currentPassword,
+newPassword
+})
+}
+);
+
+const d=await r.json();
+
+if(!r.ok){
+
+setErr(d.message);
+
+return;
+
+}
+
+setMsg("Password changed successfully.");
+
+setCurrent("");
+
+setNew("");
+
+setConfirm("");
+
+}
+
+return(
+
+<div className="space-y-8">
+
+<PageHeader
+title="Profile"
+subtitle="Manage administrator credentials."
+/>
+
+
+
+<div className="max-w-xl mx-auto mt-12 bg-white rounded-xl shadow p-8">
+
+<h1 className="text-2xl font-bold mb-6">
+
+Change Password
+
+</h1>
+
+<form
+onSubmit={save}
+className="space-y-5"
+>
+
+<input
+type="password"
+placeholder="Current Password"
+className="w-full border rounded-lg px-4 py-3"
+value={currentPassword}
+onChange={e=>setCurrent(e.target.value)}
+required
+/>
+
+<input
+type="password"
+placeholder="New Password"
+className="w-full border rounded-lg px-4 py-3"
+value={newPassword}
+onChange={e=>setNew(e.target.value)}
+required
+/>
+
+<input
+type="password"
+placeholder="Confirm Password"
+className="w-full border rounded-lg px-4 py-3"
+value={confirmPassword}
+onChange={e=>setConfirm(e.target.value)}
+required
+/>
+
+{err &&
+<div className="text-red-600">
+{err}
+</div>
+}
+
+{msg &&
+<div className="text-green-600">
+{msg}
+</div>
+}
+
+<button
+className="bg-blue-600 text-white rounded-lg px-6 py-3"
+>
+
+Update Password
+
+</button>
+
+</form>
+
+</div>
+
+
+</div>
+
+);
+
+}

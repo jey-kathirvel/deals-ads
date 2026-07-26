@@ -1,0 +1,122 @@
+
+import PageHeader from "@/components/ui/PageHeader";
+import DataTable from "@/components/ui/DataTable";
+"use client";
+
+import {useEffect,useState} from "react";
+
+export default function ReviewQueue(){
+
+const[list,setList]=useState<any[]>([]);
+
+async function load(){
+
+const r=await fetch("/api/admin/review-queue",{cache:"no-store"});
+
+setList(await r.json());
+
+}
+
+useEffect(()=>{
+
+load();
+
+const t=setInterval(load,5000);
+
+return () => clearInterval(t);
+
+},[]);
+
+async function action(id:string,a:string){
+
+await fetch("/api/admin/review-queue",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+id,
+action:a
+})
+
+});
+
+load();
+
+}
+
+return(
+
+<div className="max-w-7xl mx-auto p-8">
+
+<h1 className="text-3xl font-bold mb-6">
+
+Review Queue
+
+</h1>
+
+<table className="w-full">
+
+<thead>
+
+<tr>
+
+<th>Product</th>
+<th>Discount</th>
+<th>Status</th>
+<th>Action</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{list.map(x=>
+
+<tr key={x.id}>
+
+<td>{x.productName}</td>
+
+<td>{x.discount}%</td>
+
+<td>{x.status}</td>
+
+<td className="space-x-2">
+
+<button
+className="bg-green-600 text-white px-3 py-1 rounded"
+onClick={()=>action(x.id,"approve")}
+>
+
+Approve
+
+</button>
+
+<button
+className="bg-red-600 text-white px-3 py-1 rounded"
+onClick={()=>action(x.id,"reject")}
+>
+
+Reject
+
+</button>
+
+</td>
+
+</tr>
+
+)}
+
+</tbody>
+
+</table>
+
+</div>
+
+);
+
+}

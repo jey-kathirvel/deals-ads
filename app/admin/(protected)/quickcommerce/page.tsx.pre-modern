@@ -1,0 +1,131 @@
+
+import PageHeader from "@/components/ui/PageHeader";
+"use client";
+
+import { useEffect, useState } from "react";
+
+export default function QuickcommerceAdmin(){
+
+const [health,setHealth]=useState<any>();
+
+async function load(){
+
+const r=await fetch("/api/admin/provider-health");
+
+const d=await r.json();
+
+setHealth(d.quickcommerce);
+
+}
+
+useEffect(()=>{
+
+load();
+
+const t=setInterval(load,5000);
+
+return () => clearInterval(t);
+
+},[]);
+
+async function test(){
+
+await fetch("/api/admin/quickcommerce/test",{
+method:"POST"
+});
+
+load();
+
+}
+
+async function sync(){
+
+await fetch("/api/admin/quickcommerce/sync",{
+method:"POST"
+});
+
+load();
+
+}
+
+if(!health) return null;
+
+return(
+
+<div className="max-w-7xl mx-auto p-8 space-y-6">
+
+<h1 className="text-3xl font-bold">
+
+Quickcommerce Operations
+
+</h1>
+
+<div className="grid grid-cols-4 gap-4">
+
+<Card title="Status" value={health.status}/>
+
+<Card title="Requests" value={health.totalRequests}/>
+
+<Card title="Success" value={health.successfulRequests}/>
+
+<Card title="Failures" value={health.failedRequests}/>
+
+</div>
+
+<div className="flex gap-4">
+
+<button
+onClick={test}
+className="rounded bg-blue-600 text-white px-5 py-2"
+>
+
+Test Connection
+
+</button>
+
+<button
+onClick={sync}
+className="rounded bg-green-600 text-white px-5 py-2"
+>
+
+Run Deals Job Now
+
+</button>
+
+</div>
+
+<pre className="border rounded p-4">
+
+{JSON.stringify(health,null,2)}
+
+</pre>
+
+</div>
+
+);
+
+}
+
+function Card({title,value}:{title:string,value:any}){
+
+return(
+
+<div className="border rounded-xl p-4">
+
+<div className="text-sm text-gray-500">
+
+{title}
+
+</div>
+
+<div className="text-2xl font-bold">
+
+{String(value)}
+
+</div>
+
+</div>
+
+);
+
+}
