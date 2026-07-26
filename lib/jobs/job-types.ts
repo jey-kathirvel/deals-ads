@@ -2,7 +2,11 @@ export type JobStatus =
   "queued" | "running" | "success" | "partial_success" | "failed" | "cancelled";
 
 export type JobType =
-  "full-import" | "quickcommerce-import" | "amazon-import" | "cleanup";
+  | "full-import"
+  | "quickcommerce-import"
+  | "grocery-import"
+  | "amazon-import"
+  | "cleanup";
 
 export interface JobRun {
   id: string;

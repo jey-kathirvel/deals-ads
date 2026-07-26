@@ -22,6 +22,40 @@ export async function cleanupDeals() {
   return runDailyDealLifecycle();
 }
 
+/**
+ * Removes only Grocery deals that have already been confirmed as expired or
+ * inactive. Active Grocery deals and all non-Grocery deals are retained.
+ */
+export async function cleanupGroceryDeals() {
+  const deals = await getDeals(true);
+  let deleted = 0;
+
+  for (const deal of deals) {
+    if (deal.category.trim().toLowerCase() !== "grocery") {
+      continue;
+    }
+
+    const expired =
+      deal.status === "expired" ||
+      hasExpired(deal.expiryDate);
+
+    const inactivePublished =
+      deal.status === "published" &&
+      !deal.active;
+
+    if (!expired && !inactivePublished) {
+      continue;
+    }
+
+    await deleteDeal(deal.id);
+    deleted += 1;
+  }
+
+  return {
+    deletedUnsavedDeals: deleted,
+  };
+}
+
 export async function saveDeal(input: Partial<Deal> & Pick<Deal, "title" | "platform" | "category" | "price" | "mrp" | "url">) {
   const items = await getDeals(true);
   const existing = input.id ? items.find((item) => item.id === input.id) : undefined;

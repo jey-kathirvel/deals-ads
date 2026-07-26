@@ -1,6 +1,7 @@
 import type { Deal } from "@/lib/deal-types";
 import {
   cleanupDeals,
+  cleanupGroceryDeals,
   deleteDeal,
   getDeals,
   importDeals,
@@ -19,6 +20,8 @@ export interface QuickCommerceDailyOptions {
   latitude: number;
   longitude: number;
   pincode?: string;
+  categoryScope?: string;
+  cleanupScope?: "all" | "grocery";
 }
 
 export interface QuickCommerceDailyResult {
@@ -112,12 +115,69 @@ function isMobilePhoneProduct(
   return androidPhonePattern.test(title);
 }
 
+
+/**
+ * Determines whether a QuickCommerce result is a genuine Grocery product.
+ *
+ * QuickCommerce providers can return loosely-related products for broad
+ * searches. For example, a "rice" search may occasionally return electronics,
+ * beauty products or accessories. The isolated Grocery job must reject those
+ * products before ranking and persistence.
+ */
+function isGenuineGroceryProduct(
+  product: QuickCommerceProduct,
+  keyword: string,
+): boolean {
+  const value = `${product.name} ${product.brand ?? ""} ${keyword}`
+    .toLowerCase()
+    .replace(/[()[\],|/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  /*
+   * Strong non-Grocery exclusions take precedence over Grocery keywords.
+   */
+  const excludedPattern =
+    /\b(?:mobile|smartphone|iphone|android phone|samsung galaxy|oneplus|realme|redmi|vivo|oppo|poco|laptop|notebook|ultrabook|computer|desktop|monitor|keyboard|mouse|mouse pad|webcam|printer|ssd|hard disk|hard drive|router|power bank|charger|charging cable|usb cable|earbuds?|headphones?|headsets?|neckband|speaker|soundbar|smart watch|smartwatch|fitness band|fitness tracker|television|smart tv|android tv|google tv|qled|oled|led tv|remote control|tempered glass|screen protector|phone case|mobile case|back cover|laptop stand|camera|memory card|pendrive|pen drive|gaming|joystick|controller|adapter|extension board|electric iron|mixer grinder|air fryer|microwave|toaster|induction cooktop|refrigerator|washing machine|air conditioner|fan|bulb|lamp|battery|inverter|shoe|shoes|sneaker|sandals?|slippers?|shirt|t-shirt|jeans|trouser|dress|kurta|saree|handbag|wallet|lipstick|mascara|foundation|eyeliner|nail polish|makeup|face wash|moisturizer|sunscreen|serum|perfume|deodorant|shampoo|conditioner|hair colour|hair color|razor|trimmer|diaper|sanitary pad|condom|medicine|tablet|capsule|supplement|protein powder)\b/;
+
+  if (excludedPattern.test(value)) {
+    return false;
+  }
+
+  /*
+   * Genuine food, beverage, dairy, produce and pantry products.
+   */
+  const foodPattern =
+    /\b(?:grocery|rice|basmati|ponni|sona masoori|atta|wheat flour|maida|rava|sooji|semolina|dal|dhal|lentil|pulses?|toor dal|tur dal|moong dal|urad dal|chana dal|rajma|chickpea|cooking oil|sunflower oil|groundnut oil|mustard oil|olive oil|coconut oil|ghee|milk|curd|yogurt|yoghurt|butter|cheese|paneer|cream|bread|bun|rusk|cake|biscuit|cookies?|snacks?|chips|namkeen|mixture|murukku|popcorn|chocolate|candy|sweet|sweets|ice cream|juice|beverage|soft drink|soda|water bottle|mineral water|tea|coffee|sugar|salt|jaggery|honey|jam|spread|pickle|papad|masala|spice|spices|turmeric|chilli powder|chili powder|coriander powder|pepper|cumin|mustard seeds?|cardamom|clove|cinnamon|ginger|garlic|onion|potato|tomato|vegetable|vegetables|fruit|fruits|apple|banana|orange|mango|grapes?|pomegranate|watermelon|papaya|guava|lemon|lime|coconut|egg|eggs|noodles|pasta|vermicelli|oats|cornflakes|cereal|muesli|ready to eat|ready-to-eat|instant food|frozen food|sauce|ketchup|mayonnaise|vinegar|soup|flour|besan|poha|aval|idli batter|dosa batter|chapati|roti|paratha|meat|chicken|mutton|fish|seafood)\b/;
+
+  if (foodPattern.test(value)) {
+    return true;
+  }
+
+  /*
+   * Household consumables commonly sold through Grocery stores.
+   * Appliances and electronics have already been excluded above.
+   */
+  const householdEssentialsPattern =
+    /\b(?:dishwash|dish wash|dishwashing|detergent|laundry liquid|washing powder|fabric conditioner|floor cleaner|toilet cleaner|bathroom cleaner|glass cleaner|surface cleaner|disinfectant|phenyl|bleach|cleaning liquid|cleaning spray|scrub pad|sponge|garbage bag|trash bag|aluminium foil|aluminum foil|cling film|tissue paper|toilet paper|paper towel|kitchen towel|napkin|matchbox|matches|mosquito coil|mosquito repellent|hand wash|handwash|soap|toothpaste|toothbrush|mouthwash)\b/;
+
+  return householdEssentialsPattern.test(value);
+}
+
 function categoryFor(keyword: string): string {
   const normalized = keyword.toLowerCase();
   if (/beauty|skin|makeup/.test(normalized)) return "Beauty";
   if (/fashion|shoe|watch/.test(normalized)) return "Fashion";
   if (/home|kitchen|appliance/.test(normalized)) return "Home";
-  if (/grocery|food|snack/.test(normalized)) return "Food";
+
+  if (
+    /grocery|milk|curd|paneer|cheese|butter|rice|atta|flour|oil|ghee|dal|lentil|salt|sugar|tea|coffee|biscuit|cookies|snack|chips|juice|soft drink|vegetable|fruit|banana|apple|onion|tomato|potato|detergent|soap|shampoo|toothpaste|cleaner|baby/.test(
+      normalized,
+    )
+  )
+    return "Grocery";
+
+  if (/food/.test(normalized)) return "Food";
   if (
     /mobile|smartphone|iphone|samsung|oneplus|realme|redmi|vivo|oppo|poco|tv|television|laptop|notebook|ultrabook|desktop|computer|monitor|keyboard|mouse|webcam|printer|ssd|hard disk|power bank|charger|earbud|headphone|speaker|router|electronics/.test(
       normalized,
@@ -146,6 +206,46 @@ function productTypeFor(
     )
   )
     return "Smart Watches";
+
+
+  if (/\bmilk\b/.test(value)) return "Milk";
+  if (/\bcurd\b|\byogurt\b/.test(value)) return "Curd";
+  if (/\bpaneer\b/.test(value)) return "Paneer";
+  if (/\bcheese\b/.test(value)) return "Cheese";
+  if (/\bbutter\b/.test(value)) return "Butter";
+
+  if (/\batta\b|\bflour\b/.test(value)) return "Atta";
+  if (/\brice\b/.test(value)) return "Rice";
+  if (/\bdal\b|\blentil\b/.test(value)) return "Dal";
+  if (/\boil\b/.test(value)) return "Cooking Oil";
+  if (/\bghee\b/.test(value)) return "Ghee";
+
+  if (/\btea\b/.test(value)) return "Tea";
+  if (/\bcoffee\b/.test(value)) return "Coffee";
+
+  if (/\bbiscuit\b|\bcookie\b/.test(value))
+    return "Biscuits";
+
+  if (/\bchips\b|\bsnack\b/.test(value))
+    return "Snacks";
+
+  if (/\bfruit\b|\bapple\b|\bbanana\b/.test(value))
+    return "Fruits";
+
+  if (/\bvegetable\b|\bonion\b|\btomato\b|\bpotato\b/.test(value))
+    return "Vegetables";
+
+  if (/\bdetergent\b/.test(value))
+    return "Detergents";
+
+  if (/\bsoap\b/.test(value))
+    return "Soap";
+
+  if (/\bshampoo\b/.test(value))
+    return "Shampoo";
+
+  if (/\btoothpaste\b/.test(value))
+    return "Toothpaste";
 
   if (isMobilePhoneProduct(product)) {
     return "Mobile Phones";
@@ -322,6 +422,38 @@ function productTypeFor(
   return fallback || "Other Products";
 }
 
+/**
+ * Returns true when the balanced product type belongs to Grocery.
+ *
+ * Grocery classification uses the product type already derived from the
+ * provider result and discovery keyword. This keeps daily ranking deterministic
+ * and prevents broad provider responses from bypassing Grocery limits.
+ */
+function isGroceryProductType(productType: string): boolean {
+  return new Set([
+    "Milk",
+    "Curd",
+    "Paneer",
+    "Cheese",
+    "Butter",
+    "Atta",
+    "Rice",
+    "Dal",
+    "Cooking Oil",
+    "Ghee",
+    "Tea",
+    "Coffee",
+    "Biscuits",
+    "Snacks",
+    "Fruits",
+    "Vegetables",
+    "Detergents",
+    "Soap",
+    "Shampoo",
+    "Toothpaste",
+  ]).has(productType);
+}
+
 function key(product: QuickCommerceProduct): string {
   return `${product.platform.toLowerCase()}|${product.id.toLowerCase()}`;
 }
@@ -414,6 +546,7 @@ export class QuickCommerceDailyDealsService {
       }
     >();
     const providerFailures: string[] = [];
+    let rejectedNonGrocery = 0;
 
     for (const keyword of options.keywords) {
       for (const platform of options.platforms) {
@@ -436,9 +569,24 @@ export class QuickCommerceDailyDealsService {
             const requiredDiscount =
               productType === "Mobile Phones"
                 ? Math.min(options.minimumDiscountPercent, 1)
-                : options.minimumDiscountPercent;
+                : isGroceryProductType(productType)
+                  ? Math.min(options.minimumDiscountPercent, 5)
+                  : options.minimumDiscountPercent;
+
+            const groceryScope =
+              options.categoryScope?.trim().toLowerCase() ===
+              "grocery";
+
+            const genuineGrocery =
+              !groceryScope ||
+              isGenuineGroceryProduct(product, keyword);
+
+            if (groceryScope && !genuineGrocery) {
+              rejectedNonGrocery += 1;
+            }
 
             if (
+              genuineGrocery &&
               product.available &&
               product.images.length > 0 &&
               product.offerPrice > 0 &&
@@ -446,7 +594,18 @@ export class QuickCommerceDailyDealsService {
             ) {
               candidates.set(key(product), {
                 product,
-                category: categoryFor(keyword),
+
+                /*
+                 * Every product discovered by the isolated Grocery job must
+                 * be published under the Grocery category. Without this
+                 * override, searches such as rice, dal, fruits and vegetables
+                 * are classified as Other Deals and do not appear on
+                 * /grocery.
+                 */
+                category:
+                  options.categoryScope?.trim() ||
+                  categoryFor(keyword),
+
                 productType,
               });
             }
@@ -460,9 +619,18 @@ export class QuickCommerceDailyDealsService {
     }
 
     const existing = await getDeals(true);
+
+    const scopedExisting = options.categoryScope
+      ? existing.filter(
+          (deal) =>
+            deal.category.trim().toLowerCase() ===
+            options.categoryScope?.trim().toLowerCase(),
+        )
+      : existing;
+
     const publicationUrls = new Set<string>();
     const publicationTitles = new Set<string>();
-    for (const deal of existing) {
+    for (const deal of scopedExisting) {
       const identity = publicationIdentity({
         id: String(deal.id),
         name: deal.title,
@@ -493,6 +661,19 @@ export class QuickCommerceDailyDealsService {
 
       if (mobilePhoneDifference !== 0) {
         return mobilePhoneDifference;
+      }
+
+      /*
+       * Grocery is considered before general Electronics so Grocery products
+       * are not pushed outside the global daily limit. Product-type balancing
+       * still prevents any single Grocery type from dominating the selection.
+       */
+      const groceryDifference =
+        Number(right.category === "Grocery") -
+        Number(left.category === "Grocery");
+
+      if (groceryDifference !== 0) {
+        return groceryDifference;
       }
 
       /*
@@ -567,6 +748,7 @@ export class QuickCommerceDailyDealsService {
       "[QuickCommerce] Balanced product-type selection",
       JSON.stringify({
         discovered: candidates.size,
+        rejectedNonGrocery,
         selected: ranked.length,
         finalLimit,
         maximumPerProductType,
@@ -599,7 +781,7 @@ export class QuickCommerceDailyDealsService {
     let checked = 0;
     let deleted = 0;
     let retainedOnError = 0;
-    for (const deal of existing) {
+    for (const deal of scopedExisting) {
       const identity = validationIdentity(deal);
       if (!identity) continue;
       checked += 1;
@@ -632,7 +814,11 @@ export class QuickCommerceDailyDealsService {
      * Hard-delete only deals already confirmed as expired or inactive.
      * Active deals are retained even when absent from the latest search result.
      */
-    const lifecycleResult = await cleanupDeals();
+    const lifecycleResult =
+      options.cleanupScope === "grocery"
+        ? await cleanupGroceryDeals()
+        : await cleanupDeals();
+
     deleted += lifecycleResult.deletedUnsavedDeals;
 
     return {
@@ -667,6 +853,36 @@ export function quickCommerceOptionsFromEnvironment(): QuickCommerceDailyOptions
         "smart watches",
         "kitchen appliances",
         "fashion",
+
+        // Grocery and daily essentials
+        "grocery",
+        "milk",
+        "curd",
+        "paneer",
+        "cheese",
+        "butter",
+        "atta",
+        "wheat flour",
+        "rice",
+        "dal",
+        "cooking oil",
+        "ghee",
+        "salt",
+        "sugar",
+        "tea",
+        "coffee",
+        "biscuits",
+        "cookies",
+        "chips",
+        "snacks",
+        "fruit",
+        "vegetables",
+        "juice",
+        "soft drinks",
+        "detergent",
+        "soap",
+        "shampoo",
+        "toothpaste",
 
         // Mobile phones
         "mobile",
@@ -728,9 +944,105 @@ export function quickCommerceOptionsFromEnvironment(): QuickCommerceDailyOptions
       "Myntra",
       "Nykaa",
       "BlinkIt",
+      "Zepto",
+      "Flipkart Minutes",
     ]),
     latitude: Number(process.env.QUICKCOMMERCE_LATITUDE ?? "12.9716"),
     longitude: Number(process.env.QUICKCOMMERCE_LONGITUDE ?? "77.5946"),
     pincode: process.env.QUICKCOMMERCE_PINCODE?.trim() || undefined,
   };
 }
+
+export function quickCommerceGroceryOptionsFromEnvironment(): QuickCommerceDailyOptions {
+  const split = (
+    value: string | undefined,
+    fallback: string[],
+  ) =>
+    (value?.split(",") ?? fallback)
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+  const configuredLimit = Number(
+    process.env.GROCERY_DAILY_LIMIT ?? "20",
+  );
+
+  return {
+    /*
+     * A successful Grocery run must request at least twenty deals.
+     * The service may import fewer only when the provider itself returns
+     * fewer eligible products.
+     */
+    limit: Math.max(
+      20,
+      Math.min(
+        50,
+        Number.isFinite(configuredLimit)
+          ? configuredLimit
+          : 20,
+      ),
+    ),
+
+    minimumDiscountPercent: Number(
+      process.env.GROCERY_MINIMUM_DISCOUNT ?? "1",
+    ),
+
+    keywords: Array.from(
+      new Set(
+        split(process.env.GROCERY_KEYWORDS, [
+          "grocery",
+          "rice",
+          "atta",
+          "dal",
+          "cooking oil",
+          "milk",
+          "curd",
+          "bread",
+          "eggs",
+          "fruits",
+          "vegetables",
+          "snacks",
+          "biscuits",
+          "beverages",
+          "tea",
+          "coffee",
+          "household essentials",
+          "personal care",
+        ]),
+      ),
+    ),
+
+    platforms: split(
+      process.env.GROCERY_PLATFORMS,
+      [
+        "BlinkIt",
+        "Zepto",
+        "Swiggy Instamart",
+        "Flipkart Minutes",
+        "Amazon Fresh",
+        "BigBasket",
+        "JioMart",
+      ],
+    ),
+
+    latitude: Number(
+      process.env.GROCERY_LATITUDE ??
+        process.env.QUICKCOMMERCE_LATITUDE ??
+        "12.9716",
+    ),
+
+    longitude: Number(
+      process.env.GROCERY_LONGITUDE ??
+        process.env.QUICKCOMMERCE_LONGITUDE ??
+        "77.5946",
+    ),
+
+    pincode:
+      process.env.GROCERY_PINCODE?.trim() ||
+      process.env.QUICKCOMMERCE_PINCODE?.trim() ||
+      undefined,
+
+    categoryScope: "Grocery",
+    cleanupScope: "grocery",
+  };
+}
+
