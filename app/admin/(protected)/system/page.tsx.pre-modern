@@ -1,0 +1,107 @@
+
+import PageHeader from "@/components/ui/PageHeader";
+"use client";
+
+import {useEffect,useState} from "react";
+
+export default function SystemPage(){
+
+const[data,setData]=useState<any>();
+
+async function load(){
+
+const r=await fetch("/api/admin/system/status",{cache:"no-store"});
+
+setData(await r.json());
+
+}
+
+useEffect(()=>{
+
+load();
+
+const t=setInterval(load,5000);
+
+return () => clearInterval(t);
+
+},[]);
+
+if(!data) return null;
+
+return(
+
+<div className="max-w-7xl mx-auto p-8 space-y-6">
+
+<h1 className="text-3xl font-bold">
+
+System Health Dashboard
+
+</h1>
+
+<div className="grid grid-cols-4 gap-4">
+
+<Card title="Node" value={data.nodeVersion}/>
+
+<Card title="Platform" value={data.platform}/>
+
+<Card title="PID" value={data.pid}/>
+
+<Card title="Uptime (sec)" value={data.uptime}/>
+
+</div>
+
+<div className="grid grid-cols-2 gap-6">
+
+<Section title="Scheduler" data={data.scheduler}/>
+
+<Section title="Current Lock" data={data.currentLock}/>
+
+<Section title="Last Job" data={data.lastJob}/>
+
+<Section title="Provider Health" data={data.provider}/>
+
+<Section title="Storage Status" data={data.storage}/>
+
+</div>
+
+</div>
+
+);
+
+}
+
+function Card({title,value}:{title:string,value:any}){
+
+return(
+
+<div className="border rounded-xl p-5">
+
+<div className="text-gray-500 text-sm">{title}</div>
+
+<div className="text-2xl font-bold break-all">{String(value)}</div>
+
+</div>
+
+);
+
+}
+
+function Section({title,data}:{title:string,data:any}){
+
+return(
+
+<div className="border rounded-xl p-5 overflow-auto">
+
+<h2 className="font-semibold mb-3">{title}</h2>
+
+<pre className="text-xs">
+
+{JSON.stringify(data,null,2)}
+
+</pre>
+
+</div>
+
+);
+
+}

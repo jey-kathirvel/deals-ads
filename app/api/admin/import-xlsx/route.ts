@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/auth/guard";
 import { isAdminRequest, unauthorized } from "@/lib/admin-auth";
 import { importDeals } from "@/lib/deals-store";
 import { validateXlsx } from "@/lib/xlsx-import";
@@ -5,6 +6,22 @@ import { validateXlsx } from "@/lib/xlsx-import";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+
+  try{
+    await requireAdminSession();
+  }catch{
+    return Response.json(
+      {
+        success:false,
+        message:"Unauthorized"
+      },
+      {
+        status:401
+      }
+    );
+  }
+
+
   if (!isAdminRequest(request)) return unauthorized();
   try {
     const form = await request.formData();

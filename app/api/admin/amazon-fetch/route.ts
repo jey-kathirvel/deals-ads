@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/auth/guard";
 import {
   fetchAmazonProductDetails,
 } from "@/lib/amazon/product-fetch";
@@ -86,6 +87,22 @@ function buildPartialProduct(
 }
 
 export async function POST(request: Request) {
+
+  try{
+    await requireAdminSession();
+  }catch{
+    return Response.json(
+      {
+        success:false,
+        message:"Unauthorized"
+      },
+      {
+        status:401
+      }
+    );
+  }
+
+
   try {
     const body =
       (await request.json()) as FetchRequest;

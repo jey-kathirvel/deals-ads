@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/auth/guard";
 import {
   calculateDiscountPercent,
   normalizeAmazonImageUrl,
@@ -69,6 +70,22 @@ function validateExpiryDate(
 export async function POST(
   request: Request,
 ) {
+
+  try{
+    await requireAdminSession();
+  }catch{
+    return Response.json(
+      {
+        success:false,
+        message:"Unauthorized"
+      },
+      {
+        status:401
+      }
+    );
+  }
+
+
   try {
     const body =
       (await request.json()) as ImportRequest;

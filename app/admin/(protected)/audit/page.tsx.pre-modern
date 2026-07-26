@@ -1,0 +1,58 @@
+
+import PageHeader from "@/components/ui/PageHeader";
+import DataTable from "@/components/ui/DataTable";
+"use client";
+
+import {useEffect,useState} from "react";
+
+export default function AuditPage(){
+
+const[logs,setLogs]=useState<any[]>([]);
+
+async function load(){
+
+const r=await fetch("/api/admin/audit",{cache:"no-store"});
+
+setLogs(await r.json());
+
+}
+
+useEffect(()=>{
+
+load();
+
+const t=setInterval(load,5000);
+
+return () => clearInterval(t);
+
+},[]);
+
+return(
+
+<div className="max-w-7xl mx-auto p-8">
+
+<h1 className="text-3xl font-bold mb-6">
+
+System Audit Log
+
+</h1>
+
+
+
+<DataTable
+  columns={[
+    {key:"createdAt",title:"Time"},
+    {key:"module",title:"Module"},
+    {key:"action",title:"Action"},
+    {key:"status",title:"Status"},
+    {key:"user",title:"User"}
+  ]}
+  rows={logs}
+/>
+
+
+</div>
+
+);
+
+}
