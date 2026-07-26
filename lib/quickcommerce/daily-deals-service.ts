@@ -50,7 +50,11 @@ function categoryFor(keyword: string): string {
   if (/fashion|shoe|watch/.test(normalized)) return "Fashion";
   if (/home|kitchen|appliance/.test(normalized)) return "Home";
   if (/grocery|food|snack/.test(normalized)) return "Food";
-  if (/mobile|laptop|headphone|electronics/.test(normalized))
+  if (
+    /mobile|smartphone|iphone|samsung|oneplus|realme|redmi|vivo|oppo|poco|tv|television|laptop|notebook|ultrabook|desktop|computer|monitor|keyboard|mouse|webcam|printer|ssd|hard disk|power bank|charger|earbud|headphone|speaker|router|electronics/.test(
+      normalized,
+    )
+  )
     return "Electronics";
   return "Other Deals";
 }
@@ -178,6 +182,16 @@ export class QuickCommerceDailyDealsService {
     }
 
     const rankedCandidates = [...candidates.values()].sort((left, right) => {
+      /*
+       * Electronics are intentionally prioritised so mobile, television and
+       * computer results are not pushed outside the global daily import limit.
+       */
+      const categoryDifference =
+        Number(right.category === "Electronics") -
+        Number(left.category === "Electronics");
+
+      if (categoryDifference !== 0) return categoryDifference;
+
       const discountDifference =
         discount(right.product) - discount(left.product);
       if (discountDifference !== 0) return discountDifference;
@@ -266,56 +280,69 @@ export function quickCommerceOptionsFromEnvironment(): QuickCommerceDailyOptions
       process.env.QUICKCOMMERCE_MINIMUM_DISCOUNT ?? "10",
     ),
 
-    keywords: split(process.env.QUICKCOMMERCE_KEYWORDS, [
-      // Existing
-      "headphones",
-      "smart watches",
-      "kitchen appliances",
-      "fashion",
+    keywords: Array.from(
+      new Set([
+        ...split(process.env.QUICKCOMMERCE_KEYWORDS, []),
 
-      // Mobiles
-      "mobiles",
-      "smartphone",
-      "iphone",
-      "samsung galaxy",
-      "oneplus",
-      "realme",
-      "redmi",
-      "vivo",
-      "oppo",
-      "poco",
+        // Existing/default searches
+        "headphones",
+        "smart watches",
+        "kitchen appliances",
+        "fashion",
 
-      // TVs
-      "tv",
-      "smart tv",
-      "android tv",
-      "led tv",
-      "qled tv",
-      "oled tv",
-      "4k tv",
+        // Mobile phones
+        "mobile",
+        "mobiles",
+        "mobile phone",
+        "smartphone",
+        "smartphones",
+        "iphone",
+        "android phone",
+        "samsung galaxy",
+        "oneplus mobile",
+        "realme mobile",
+        "redmi mobile",
+        "vivo mobile",
+        "oppo mobile",
+        "poco mobile",
 
-      // Computers
-      "laptop",
-      "gaming laptop",
-      "ultrabook",
-      "notebook",
-      "desktop",
-      "computer",
-      "monitor",
+        // Televisions
+        "tv",
+        "television",
+        "smart tv",
+        "android tv",
+        "google tv",
+        "led tv",
+        "qled tv",
+        "oled tv",
+        "4k tv",
 
-      // Accessories
-      "keyboard",
-      "mouse",
-      "webcam",
-      "printer",
-      "ssd",
-      "hard disk",
-      "power bank",
-      "charger",
-      "earbuds",
-      "bluetooth speaker",
-      "wifi router",
-    ]),
+        // Computers and laptops
+        "laptop",
+        "laptops",
+        "gaming laptop",
+        "business laptop",
+        "ultrabook",
+        "notebook computer",
+        "desktop computer",
+        "computer",
+        "monitor",
+        "gaming monitor",
+
+        // Computer and mobile accessories
+        "keyboard",
+        "computer mouse",
+        "webcam",
+        "printer",
+        "ssd",
+        "external hard disk",
+        "power bank",
+        "mobile charger",
+        "earbuds",
+        "bluetooth speaker",
+        "wifi router",
+      ]),
+    ),
 
     platforms: split(process.env.QUICKCOMMERCE_PLATFORMS, [
       "Amazon",
