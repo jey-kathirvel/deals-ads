@@ -1,5 +1,6 @@
 import type { Deal } from "@/lib/deal-types";
 import {
+  cleanupDeals,
   deleteDeal,
   getDeals,
   importDeals,
@@ -33,7 +34,11 @@ export interface QuickCommerceDailyResult {
 }
 
 function discount(product: QuickCommerceProduct): number {
-  if (product.mrp <= 0 || product.offerPrice <= 0 || product.offerPrice >= product.mrp) {
+  if (
+    product.mrp <= 0 ||
+    product.offerPrice <= 0 ||
+    product.offerPrice >= product.mrp
+  ) {
     return 0;
   }
   return Math.round(((product.mrp - product.offerPrice) / product.mrp) * 100);
@@ -45,7 +50,8 @@ function categoryFor(keyword: string): string {
   if (/fashion|shoe|watch/.test(normalized)) return "Fashion";
   if (/home|kitchen|appliance/.test(normalized)) return "Home";
   if (/grocery|food|snack/.test(normalized)) return "Food";
-  if (/mobile|laptop|headphone|electronics/.test(normalized)) return "Electronics";
+  if (/mobile|laptop|headphone|electronics/.test(normalized))
+    return "Electronics";
   return "Other Deals";
 }
 
@@ -68,13 +74,16 @@ function publicationIdentity(product: QuickCommerceProduct): {
   }
   return {
     url,
-    title: `${product.platform.toLowerCase()}|${
-      product.name.toLowerCase().replace(/\W/g, "")
-    }`,
+    title: `${product.platform.toLowerCase()}|${product.name
+      .toLowerCase()
+      .replace(/\W/g, "")}`,
   };
 }
 
-function toRow(product: QuickCommerceProduct, category: string): Record<string, string> {
+function toRow(
+  product: QuickCommerceProduct,
+  category: string,
+): Record<string, string> {
   const saving = discount(product);
   return {
     title: product.name,
@@ -94,7 +103,9 @@ function toRow(product: QuickCommerceProduct, category: string): Record<string, 
   };
 }
 
-function validationIdentity(deal: Deal): { itemId: string; platform: string } | null {
+function validationIdentity(
+  deal: Deal,
+): { itemId: string; platform: string } | null {
   if (deal.source !== "quickcommerce") return null;
   if (!deal.providerItemId || !deal.providerPlatform) return null;
   return { itemId: deal.providerItemId, platform: deal.providerPlatform };
@@ -103,8 +114,13 @@ function validationIdentity(deal: Deal): { itemId: string; platform: string } | 
 export class QuickCommerceDailyDealsService {
   constructor(private readonly client: QuickCommerceClient) {}
 
-  async run(options: QuickCommerceDailyOptions): Promise<QuickCommerceDailyResult> {
-    const candidates = new Map<string, { product: QuickCommerceProduct; category: string }>();
+  async run(
+    options: QuickCommerceDailyOptions,
+  ): Promise<QuickCommerceDailyResult> {
+    const candidates = new Map<
+      string,
+      { product: QuickCommerceProduct; category: string }
+    >();
     const providerFailures: string[] = [];
 
     for (const keyword of options.keywords) {
@@ -124,7 +140,10 @@ export class QuickCommerceDailyDealsService {
               product.offerPrice > 0 &&
               discount(product) >= options.minimumDiscountPercent
             ) {
-              candidates.set(key(product), { product, category: categoryFor(keyword) });
+              candidates.set(key(product), {
+                product,
+                category: categoryFor(keyword),
+              });
             }
           }
         } catch (error) {
@@ -158,24 +177,27 @@ export class QuickCommerceDailyDealsService {
       publicationTitles.add(identity.title);
     }
 
-    const rankedCandidates = [...candidates.values()]
-      .sort((left, right) => {
-        const discountDifference = discount(right.product) - discount(left.product);
-        if (discountDifference !== 0) return discountDifference;
-        const ratingDifference = right.product.rating - left.product.rating;
-        if (ratingDifference !== 0) return ratingDifference;
-        return key(left.product).localeCompare(key(right.product));
-      });
-    const ranked = rankedCandidates.filter(({ product }) => {
-      const identity = publicationIdentity(product);
-      if (
-        publicationUrls.has(identity.url) ||
-        publicationTitles.has(identity.title)
-      ) return false;
-      publicationUrls.add(identity.url);
-      publicationTitles.add(identity.title);
-      return true;
-    }).slice(0, Math.max(1, Math.min(50, options.limit)));
+    const rankedCandidates = [...candidates.values()].sort((left, right) => {
+      const discountDifference =
+        discount(right.product) - discount(left.product);
+      if (discountDifference !== 0) return discountDifference;
+      const ratingDifference = right.product.rating - left.product.rating;
+      if (ratingDifference !== 0) return ratingDifference;
+      return key(left.product).localeCompare(key(right.product));
+    });
+    const ranked = rankedCandidates
+      .filter(({ product }) => {
+        const identity = publicationIdentity(product);
+        if (
+          publicationUrls.has(identity.url) ||
+          publicationTitles.has(identity.title)
+        )
+          return false;
+        publicationUrls.add(identity.url);
+        publicationTitles.add(identity.title);
+        return true;
+      })
+      .slice(0, Math.max(1, Math.min(50, options.limit)));
 
     const importResult = await importDeals(
       ranked.map(({ product, category }) => toRow(product, category)),
@@ -201,14 +223,25 @@ export class QuickCommerceDailyDealsService {
           deleted += 1;
         }
       } catch (error) {
+        /*
+         * A missing item or temporary provider error is not sufficient proof
+         * that an existing deal is inactive. Keep the deal unless the provider
+         * explicitly returns it as unavailable or invalid.
+         */
         if (error instanceof QuickCommerceHttpError && error.status === 404) {
-          await deleteDeal(deal.id);
-          deleted += 1;
+          retainedOnError += 1;
         } else {
           retainedOnError += 1;
         }
       }
     }
+
+    /*
+     * Hard-delete only deals already confirmed as expired or inactive.
+     * Active deals are retained even when absent from the latest search result.
+     */
+    const lifecycleResult = await cleanupDeals();
+    deleted += lifecycleResult.deletedUnsavedDeals;
 
     return {
       discovered: candidates.size,
@@ -229,12 +262,21 @@ export function quickCommerceOptionsFromEnvironment(): QuickCommerceDailyOptions
     (value?.split(",") ?? fallback).map((item) => item.trim()).filter(Boolean);
   return {
     limit: Number(process.env.QUICKCOMMERCE_DAILY_LIMIT ?? "50"),
-    minimumDiscountPercent: Number(process.env.QUICKCOMMERCE_MINIMUM_DISCOUNT ?? "10"),
+    minimumDiscountPercent: Number(
+      process.env.QUICKCOMMERCE_MINIMUM_DISCOUNT ?? "10",
+    ),
     keywords: split(process.env.QUICKCOMMERCE_KEYWORDS, [
-      "headphones", "smart watches", "kitchen appliances", "fashion",
+      "headphones",
+      "smart watches",
+      "kitchen appliances",
+      "fashion",
     ]),
     platforms: split(process.env.QUICKCOMMERCE_PLATFORMS, [
-      "Amazon", "Flipkart", "Myntra", "Nykaa", "BlinkIt",
+      "Amazon",
+      "Flipkart",
+      "Myntra",
+      "Nykaa",
+      "BlinkIt",
     ]),
     latitude: Number(process.env.QUICKCOMMERCE_LATITUDE ?? "12.9716"),
     longitude: Number(process.env.QUICKCOMMERCE_LONGITUDE ?? "77.5946"),

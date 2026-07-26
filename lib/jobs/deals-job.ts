@@ -1,31 +1,59 @@
+import {
+  QuickCommerceClient,
+  QuickCommerceDailyDealsService,
+  quickCommerceOptionsFromEnvironment,
+} from "@/lib/quickcommerce";
 import { acquireLock, releaseLock } from "./job-lock";
 import { createRun, finishRun, updateRun } from "./job-history";
-import { JobType } from "./job-types";
+import type { JobType } from "./job-types";
 
-/*
- * Replace this import with your existing Quickcommerce service.
- * Example:
- *
- * import { runQuickcommerceImport } from "@/lib/quickcommerce/import";
- *
- */
-async function executeProviderImport(progress: (current:number,total:number)=>void) {
+interface ProviderImportResult {
+  imported: number;
+  updated: number;
+  skipped: number;
+  deleted: number;
+  failed: number;
+  message: string;
+}
 
-  // ===== REPLACE WITH EXISTING QUICKCOMMERCE IMPORT =====
+async function executeProviderImport(
+  progress: (current: number, total: number) => void,
+): Promise<ProviderImportResult> {
+  const apiKey = process.env.QUICKCOMMERCE_API_KEY?.trim();
 
-  const total = 100;
-
-  for (let i = 1; i <= total; i++) {
-    await new Promise((r) => setTimeout(r, 15));
-    progress(i, total);
+  if (!apiKey) {
+    throw new Error("QUICKCOMMERCE_API_KEY is not configured.");
   }
 
+  progress(10, 100);
+
+  const client = new QuickCommerceClient({
+    apiKey,
+    baseUrl: process.env.QUICKCOMMERCE_API_BASE_URL,
+  });
+
+  const service = new QuickCommerceDailyDealsService(client);
+
+  progress(25, 100);
+
+  const result = await service.run(quickCommerceOptionsFromEnvironment());
+
+  progress(90, 100);
+
+  const failed = result.importErrors.length + result.providerFailures.length;
+
   return {
-    imported: 94,
-    updated: 4,
-    skipped: 2,
-    failed: 0,
-    message: "Quickcommerce import completed"
+    imported: result.imported,
+    updated: 0,
+    skipped: result.skipped,
+    deleted: result.deleted,
+    failed,
+    message: [
+      "QuickCommerce daily import completed.",
+      `${result.checked} existing deals checked.`,
+      `${result.deleted} inactive or expired deals deleted.`,
+      `${result.retainedOnError} deals retained after provider errors.`,
+    ].join(" "),
   };
 }
 
@@ -33,45 +61,41 @@ export async function runDealsJob(
   type: JobType = "quickcommerce-import",
   triggeredBy: "admin" | "system" = "admin",
 ) {
-
   const run = createRun(type, triggeredBy);
 
   acquireLock(run.id);
 
   try {
+    if (type !== "quickcommerce-import" && type !== "full-import") {
+      throw new Error(`Unsupported deals job type: ${type}`);
+    }
 
-    const result = await executeProviderImport((current,total)=>{
-
-      updateRun(run.id,{
+    const result = await executeProviderImport((current, total) => {
+      updateRun(run.id, {
         progress: current,
         total,
       });
-
     });
 
-    finishRun(run.id,"success",{
-      progress:100,
-      total:100,
-      imported:result.imported,
-      updated:result.updated,
-      skipped:result.skipped,
-      failed:result.failed,
-      message:result.message,
+    finishRun(run.id, result.failed > 0 ? "partial_success" : "success", {
+      progress: 100,
+      total: 100,
+      imported: result.imported,
+      updated: result.updated,
+      skipped: result.skipped,
+      deleted: result.deleted,
+      failed: result.failed,
+      message: result.message,
     });
 
     return run.id;
-
-  } catch(error){
-
-    finishRun(run.id,"failed",{
-      error:error instanceof Error ? error.message : "Unknown error"
+  } catch (error) {
+    finishRun(run.id, "failed", {
+      error: error instanceof Error ? error.message : "Unknown error",
     });
 
     throw error;
-
   } finally {
-
     releaseLock();
-
   }
 }
