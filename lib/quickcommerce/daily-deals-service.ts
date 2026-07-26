@@ -59,6 +59,204 @@ function categoryFor(keyword: string): string {
   return "Other Deals";
 }
 
+/**
+ * Returns a stable, human-readable product type used to prevent one type of
+ * product from dominating the daily deal selection.
+ *
+ * Product title matching takes precedence over the search keyword because the
+ * provider may return loosely-related results for broad searches.
+ */
+function productTypeFor(
+  product: QuickCommerceProduct,
+  keyword: string,
+): string {
+  const value = `${product.name} ${keyword}`.toLowerCase();
+
+  if (
+    /\bsmart[\s-]?watch(?:es)?\b|\bfitness tracker\b|\bfitness band\b/.test(
+      value,
+    )
+  )
+    return "Smart Watches";
+
+  if (
+    /\bmobile phone\b|\bsmartphone\b|\biphone\b|\bsamsung galaxy\b|\boneplus\b|\brealme\b|\bredmi\b|\bvivo\b|\boppo\b|\bpoco\b/.test(
+      value,
+    )
+  )
+    return "Mobile Phones";
+
+  if (
+    /\bsmart tv\b|\bandroid tv\b|\bgoogle tv\b|\btelevision\b|\bqled\b|\boled\b|\bled tv\b|\b4k tv\b|\bultra hd.*tv\b|\b\d{2,3}\s*(?:cm|inch|inches).*tv\b/.test(
+      value,
+    )
+  )
+    return "Televisions";
+
+  if (
+    /\blaptop\b|\bnotebook\b|\bultrabook\b|\bchromebook\b|\bmacbook\b|\bgalaxy book\b|\bvivobook\b|\bideapad\b|\bexpertbook\b/.test(
+      value,
+    )
+  )
+    return "Laptops";
+
+  if (
+    /\bdesktop computer\b|\bdesktop pc\b|\bdesktop cpu\b|\ball-in-one desktop\b|\bcomputer pc set\b|\bcpu set\b/.test(
+      value,
+    )
+  )
+    return "Desktop Computers";
+
+  if (/\bmonitor\b|\bcomputer display\b|\bgaming display\b/.test(value))
+    return "Monitors";
+
+  if (/\bearbuds?\b|\btws\b|\bairpods?\b/.test(value)) return "Earbuds";
+
+  if (
+    /\bheadphones?\b|\bheadsets?\b|\bneckband\b/.test(
+      value,
+    )
+  )
+    return "Headphones";
+
+  if (
+    /\bbluetooth speaker\b|\bwireless speaker\b|\bsoundbar\b|\bparty speaker\b/.test(
+      value,
+    )
+  )
+    return "Speakers";
+
+  if (
+    /\bpower bank\b|\bportable charger\b/.test(
+      value,
+    )
+  )
+    return "Power Banks";
+
+  if (
+    /\bcharger\b|\bcharging adapter\b|\bwall adapter\b/.test(
+      value,
+    )
+  )
+    return "Chargers";
+
+  if (
+    /\bcharging cable\b|\busb cable\b|\blightning cable\b|\btype[\s-]?c cable\b|\bcable\b/.test(
+      value,
+    )
+  )
+    return "Cables";
+
+  if (/\bkeyboard\b/.test(value)) return "Keyboards";
+
+  if (
+    /\bmouse\b|\btrackball\b/.test(
+      value,
+    )
+  )
+    return "Computer Mouse";
+
+  if (/\bmouse pad\b|\bdesk mat\b/.test(value)) return "Mouse Pads";
+
+  if (/\bwebcam\b|\bweb camera\b/.test(value)) return "Webcams";
+
+  if (
+    /\bprinter\b|\bmultifunction printer\b/.test(
+      value,
+    )
+  )
+    return "Printers";
+
+  if (
+    /\bssd\b|\bsolid state drive\b/.test(
+      value,
+    )
+  )
+    return "SSD Storage";
+
+  if (
+    /\bhard disk\b|\bhard drive\b|\bhdd\b/.test(
+      value,
+    )
+  )
+    return "Hard Drives";
+
+  if (
+    /\bwi[\s-]?fi router\b|\bwireless router\b|\bmesh router\b/.test(
+      value,
+    )
+  )
+    return "Routers";
+
+  if (
+    /\btempered glass\b|\bscreen protector\b/.test(
+      value,
+    )
+  )
+    return "Screen Protectors";
+
+  if (
+    /\bphone case\b|\bmobile case\b|\bback cover\b/.test(
+      value,
+    )
+  )
+    return "Mobile Cases";
+
+  if (
+    /\blaptop stand\b|\bnotebook stand\b/.test(
+      value,
+    )
+  )
+    return "Laptop Stands";
+
+  if (
+    /\bshoe\b|\bsneaker\b|\bsandal\b|\bslipper\b/.test(
+      value,
+    )
+  )
+    return "Footwear";
+
+  if (
+    /\bshirt\b|\bt-shirt\b|\bjeans\b|\btrouser\b|\bdress\b|\bkurta\b|\bsaree\b/.test(
+      value,
+    )
+  )
+    return "Clothing";
+
+  if (
+    /\bmakeup\b|\blipstick\b|\bmascara\b|\bfoundation\b/.test(
+      value,
+    )
+  )
+    return "Makeup";
+
+  if (
+    /\bskin care\b|\bskincare\b|\bface wash\b|\bmoisturizer\b|\bsunscreen\b/.test(
+      value,
+    )
+  )
+    return "Skin Care";
+
+  if (
+    /\bkitchen appliance\b|\bmixer\b|\bgrinder\b|\bair fryer\b|\bmicrowave\b|\btoaster\b/.test(
+      value,
+    )
+  )
+    return "Kitchen Appliances";
+
+  /*
+   * Unknown products are grouped by their normalized search keyword. This
+   * ensures even fallback types remain subject to the same maximum-four rule.
+   */
+  const fallback = keyword
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+  return fallback || "Other Products";
+}
+
 function key(product: QuickCommerceProduct): string {
   return `${product.platform.toLowerCase()}|${product.id.toLowerCase()}`;
 }
@@ -123,7 +321,11 @@ export class QuickCommerceDailyDealsService {
   ): Promise<QuickCommerceDailyResult> {
     const candidates = new Map<
       string,
-      { product: QuickCommerceProduct; category: string }
+      {
+        product: QuickCommerceProduct;
+        category: string;
+        productType: string;
+      }
     >();
     const providerFailures: string[] = [];
 
@@ -147,6 +349,7 @@ export class QuickCommerceDailyDealsService {
               candidates.set(key(product), {
                 product,
                 category: categoryFor(keyword),
+                productType: productTypeFor(product, keyword),
               });
             }
           }
@@ -197,21 +400,73 @@ export class QuickCommerceDailyDealsService {
       if (discountDifference !== 0) return discountDifference;
       const ratingDifference = right.product.rating - left.product.rating;
       if (ratingDifference !== 0) return ratingDifference;
+      const ratingCountDifference =
+        right.product.ratingCount - left.product.ratingCount;
+      if (ratingCountDifference !== 0) return ratingCountDifference;
+
+      const priceDifference =
+        left.product.offerPrice - right.product.offerPrice;
+      if (priceDifference !== 0) return priceDifference;
+
       return key(left.product).localeCompare(key(right.product));
     });
-    const ranked = rankedCandidates
-      .filter(({ product }) => {
-        const identity = publicationIdentity(product);
-        if (
-          publicationUrls.has(identity.url) ||
-          publicationTitles.has(identity.title)
-        )
-          return false;
-        publicationUrls.add(identity.url);
-        publicationTitles.add(identity.title);
-        return true;
-      })
-      .slice(0, Math.max(1, Math.min(50, options.limit)));
+
+    const maximumPerProductType = 4;
+    const finalLimit = Math.max(1, Math.min(50, options.limit));
+    const productTypeCounts = new Map<string, number>();
+    const ranked: typeof rankedCandidates = [];
+
+    for (const candidate of rankedCandidates) {
+      const identity = publicationIdentity(candidate.product);
+
+      if (
+        publicationUrls.has(identity.url) ||
+        publicationTitles.has(identity.title)
+      ) {
+        continue;
+      }
+
+      const currentTypeCount =
+        productTypeCounts.get(candidate.productType) ?? 0;
+
+      /*
+       * Never import more than four deals of the same product type during one
+       * run. Because candidates are already ranked, the retained four are the
+       * best deals by discount, rating, review count and offer price.
+       */
+      if (currentTypeCount >= maximumPerProductType) {
+        continue;
+      }
+
+      publicationUrls.add(identity.url);
+      publicationTitles.add(identity.title);
+
+      productTypeCounts.set(
+        candidate.productType,
+        currentTypeCount + 1,
+      );
+
+      ranked.push(candidate);
+
+      if (ranked.length >= finalLimit) {
+        break;
+      }
+    }
+
+    console.info(
+      "[QuickCommerce] Balanced product-type selection",
+      JSON.stringify({
+        discovered: candidates.size,
+        selected: ranked.length,
+        finalLimit,
+        maximumPerProductType,
+        productTypes: Object.fromEntries(
+          [...productTypeCounts.entries()].sort((left, right) =>
+            left[0].localeCompare(right[0]),
+          ),
+        ),
+      }),
+    );
 
     const importResult = await importDeals(
       ranked.map(({ product, category }) => toRow(product, category)),
