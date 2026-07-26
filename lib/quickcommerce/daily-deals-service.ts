@@ -265,12 +265,58 @@ export function quickCommerceOptionsFromEnvironment(): QuickCommerceDailyOptions
     minimumDiscountPercent: Number(
       process.env.QUICKCOMMERCE_MINIMUM_DISCOUNT ?? "10",
     ),
+
     keywords: split(process.env.QUICKCOMMERCE_KEYWORDS, [
+      // Existing
       "headphones",
       "smart watches",
       "kitchen appliances",
       "fashion",
+
+      // Mobiles
+      "mobiles",
+      "smartphone",
+      "iphone",
+      "samsung galaxy",
+      "oneplus",
+      "realme",
+      "redmi",
+      "vivo",
+      "oppo",
+      "poco",
+
+      // TVs
+      "tv",
+      "smart tv",
+      "android tv",
+      "led tv",
+      "qled tv",
+      "oled tv",
+      "4k tv",
+
+      // Computers
+      "laptop",
+      "gaming laptop",
+      "ultrabook",
+      "notebook",
+      "desktop",
+      "computer",
+      "monitor",
+
+      // Accessories
+      "keyboard",
+      "mouse",
+      "webcam",
+      "printer",
+      "ssd",
+      "hard disk",
+      "power bank",
+      "charger",
+      "earbuds",
+      "bluetooth speaker",
+      "wifi router",
     ]),
+
     platforms: split(process.env.QUICKCOMMERCE_PLATFORMS, [
       "Amazon",
       "Flipkart",
