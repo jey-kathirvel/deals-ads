@@ -34,13 +34,14 @@ export function createRun(type: JobType, triggeredBy: "admin" | "system") {
     imported: 0,
     updated: 0,
     skipped: 0,
+    deleted: 0,
     failed: 0,
   };
 
   jobs.unshift(run);
   write(jobs);
 
-  addAudit("Jobs","UPDATE","SUCCESS",{});
+  addAudit("Jobs", "UPDATE", "SUCCESS", {});
 
   return run;
 }
@@ -58,7 +59,7 @@ export function updateRun(id: string, patch: Partial<JobRun>) {
 
   write(jobs);
 
-  addAudit("Jobs","UPDATE","SUCCESS",{});
+  addAudit("Jobs", "UPDATE", "SUCCESS", {});
 }
 
 export function finishRun(
@@ -74,7 +75,9 @@ export function finishRun(
     completedAt: completed.toISOString(),
     durationMs:
       completed.getTime() -
-      new Date(read().find((x) => x.id === id)?.startedAt ?? completed).getTime(),
+      new Date(
+        read().find((x) => x.id === id)?.startedAt ?? completed,
+      ).getTime(),
   });
 }
 

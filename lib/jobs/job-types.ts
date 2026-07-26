@@ -1,16 +1,8 @@
 export type JobStatus =
-  | "queued"
-  | "running"
-  | "success"
-  | "partial_success"
-  | "failed"
-  | "cancelled";
+  "queued" | "running" | "success" | "partial_success" | "failed" | "cancelled";
 
 export type JobType =
-  | "full-import"
-  | "quickcommerce-import"
-  | "amazon-import"
-  | "cleanup";
+  "full-import" | "quickcommerce-import" | "amazon-import" | "cleanup";
 
 export interface JobRun {
   id: string;
@@ -29,6 +21,7 @@ export interface JobRun {
   imported: number;
   updated: number;
   skipped: number;
+  deleted: number;
   failed: number;
 
   message?: string;

@@ -1,44 +1,70 @@
-import { getSchedulerSettings,touchSchedulerRun } from "./settings";
+import { isLocked } from "@/lib/jobs/job-lock";
 import { runDealsJob } from "@/lib/jobs/deals-job";
+import {
+  getSchedulerSettings,
+  isSchedulerRunDue,
+  touchSchedulerRun,
+} from "./settings";
 
-let timer:NodeJS.Timeout|undefined;
+let timer: NodeJS.Timeout | undefined;
 
-export function startDealsScheduler(){
+async function executeScheduledRun() {
+  const settings = getSchedulerSettings();
 
-  if(timer) clearInterval(timer);
+  if (!settings.enabled) {
+    return;
+  }
 
-  const settings=getSchedulerSettings();
+  if (isLocked()) {
+    return;
+  }
 
-  if(!settings.enabled) return;
+  if (!isSchedulerRunDue()) {
+    return;
+  }
 
-  timer=setInterval(async()=>{
+  try {
+    await runDealsJob("quickcommerce-import", "system");
 
-    try{
-
-      await runDealsJob(
-        "quickcommerce-import",
-        "system"
-      );
-
-      touchSchedulerRun();
-
-    }catch(err){
-
-      console.error("Deals Scheduler:",err);
-
-    }
-
-  },settings.intervalMinutes*60000);
-
+    touchSchedulerRun();
+  } catch (error) {
+    console.error("Deals Scheduler:", error);
+  }
 }
 
-export async function runSchedulerNow(){
+export function startDealsScheduler() {
+  if (timer) {
+    clearInterval(timer);
+  }
 
-  await runDealsJob(
-    "quickcommerce-import",
-    "admin"
-  );
+  const settings = getSchedulerSettings();
+
+  if (!settings.enabled) {
+    return;
+  }
+
+  void executeScheduledRun();
+
+  /*
+   * Check every minute, but execute only once per India calendar day.
+   */
+  timer = setInterval(() => {
+    void executeScheduledRun();
+  }, 60 * 1000);
+}
+
+export async function runSchedulerNow() {
+  if (isLocked()) {
+    throw new Error("A deals import job is already running.");
+  }
+
+  if (!isSchedulerRunDue()) {
+    throw new Error("QuickCommerce deals have already been fetched today.");
+  }
+
+  const jobId = await runDealsJob("quickcommerce-import", "admin");
 
   touchSchedulerRun();
 
+  return jobId;
 }
