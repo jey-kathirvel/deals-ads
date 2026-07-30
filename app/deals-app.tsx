@@ -4,15 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import type { Deal } from "@/lib/deal-types";
 import { slugify } from "@/lib/slug";
 /* PATCH-004.1H: HOMEPAGE PREMIUM GROCERY EXPERIENCE */
-const categories = [
-  "All",
-  "Mobiles",
-  "Electronics",
-  "Fashion",
-  "Home",
-  "Beauty",
-  "Travel",
-];
 const inr = new Intl.NumberFormat("en-IN");
 
 const formatRating = (rating: number) => {
@@ -388,6 +379,18 @@ export default function DealsApp({
             (deal) => deal.category.trim().toLowerCase() !== "grocery",
           ),
     [initialDeals, isGroceryPage],
+  );
+
+  const dynamicCategories = useMemo(
+    () => [
+      "All",
+      ...Array.from(
+        new Set(
+          marketplaceDeals.map((deal) => deal.category.trim()).filter(Boolean),
+        ),
+      ).sort((a, b) => a.localeCompare(b)),
+    ],
+    [marketplaceDeals],
   );
 
   const collectionDeals = useMemo(() => {
@@ -1216,7 +1219,7 @@ export default function DealsApp({
               </div>
 
               <div className="submenu-grid">
-                {categories.map((item) => (
+                {dynamicCategories.map((item) => (
                   <button
                     type="button"
                     key={item}
@@ -1594,7 +1597,7 @@ export default function DealsApp({
             role="tablist"
             aria-label="Deal categories"
           >
-            {categories.map((item) => (
+            {dynamicCategories.map((item) => (
               <button
                 type="button"
                 key={item}
