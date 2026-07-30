@@ -88,9 +88,7 @@ export async function generateStaticParams() {
   }));
 }
 
-export default async function CategoryPage({
-  params,
-}: CategoryPageProps) {
+export default async function CategoryPage({ params }: CategoryPageProps) {
   const { slug } = await params;
   const deals = await getPublishedDeals();
   const categoryName = getCategoryNameBySlug(deals, slug);
@@ -228,15 +226,14 @@ export default async function CategoryPage({
                           width={620}
                           height={460}
                           sizes="(max-width: 700px) 100vw, 33vw"
+                          unoptimized
                         />
                       ) : (
                         <div className={styles.imageFallback}>DEAL</div>
                       )}
 
                       {discount > 0 ? (
-                        <span className={styles.discount}>
-                          {discount}% OFF
-                        </span>
+                        <span className={styles.discount}>{discount}% OFF</span>
                       ) : null}
                     </div>
 
