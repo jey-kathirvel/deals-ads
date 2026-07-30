@@ -255,7 +255,34 @@ export async function getRelatedDeals(deal: Deal, limit = 4): Promise<Deal[]> {
 export async function getPublishedDeals() {
   const deals = await getLegacyDeals();
 
-  return deals.filter((d) => d.active && d.status === "published");
+  return deals
+    .filter(
+      (deal) =>
+        deal.active &&
+        deal.status === "published" &&
+        deal.imageUrl.trim().length > 0,
+    )
+    .sort((left, right) => {
+      const leftImportedAt = Date.parse(
+        left.importedAt || left.updatedAt || "",
+      );
+      const rightImportedAt = Date.parse(
+        right.importedAt || right.updatedAt || "",
+      );
+
+      const normalizedLeft = Number.isFinite(leftImportedAt)
+        ? leftImportedAt
+        : 0;
+      const normalizedRight = Number.isFinite(rightImportedAt)
+        ? rightImportedAt
+        : 0;
+
+      if (normalizedRight !== normalizedLeft) {
+        return normalizedRight - normalizedLeft;
+      }
+
+      return right.id - left.id;
+    });
 }
 
 export async function deleteDeal(id: number) {

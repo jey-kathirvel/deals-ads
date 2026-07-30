@@ -87,6 +87,7 @@ async function executeProviderImport(
         : "QuickCommerce daily import completed.",
       `${result.checked} existing deals checked.`,
       `${result.validationSkipped} selected-platform deals skipped because they were checked within 72 hours.`,
+      `${result.unsupportedPlatforms.length} unsupported platforms disabled; ${result.unsupportedSearchesSkipped} repeated searches avoided.`,
       `${result.deleted} inactive or expired deals deleted.`,
       `${result.retainedOnError} deals retained after provider errors.`,
     ].join(" "),
