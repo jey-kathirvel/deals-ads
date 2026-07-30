@@ -4,6 +4,7 @@ import {
   quickCommerceGroceryOptionsFromEnvironment,
   quickCommerceOptionsFromEnvironment,
 } from "@/lib/quickcommerce";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { acquireLock, releaseLock } from "./job-lock";
 import { appendRunEvent, createRun, finishRun, updateRun } from "./job-history";
 import type { JobType } from "./job-types";
@@ -144,6 +145,9 @@ export async function runDealsJob(
       "complete",
       `${result.message} Imported ${result.imported}; deleted ${result.deleted}; failures ${result.failed}.`,
     );
+    revalidateTag("grocery-deals", "max");
+    revalidatePath("/", "page");
+    revalidatePath("/grocery", "page");
 
     return run.id;
   } catch (error) {
