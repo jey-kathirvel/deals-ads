@@ -1,5 +1,10 @@
 export type JobStatus =
-  "queued" | "running" | "success" | "partial_success" | "failed" | "cancelled";
+  | "queued"
+  | "running"
+  | "success"
+  | "partial_success"
+  | "failed"
+  | "cancelled";
 
 export type JobType =
   | "full-import"
@@ -7,6 +12,20 @@ export type JobType =
   | "grocery-import"
   | "amazon-import"
   | "cleanup";
+
+export interface JobEvent {
+  timestamp: string;
+  stage:
+    | "starting"
+    | "search"
+    | "selection"
+    | "import"
+    | "validation"
+    | "cleanup"
+    | "complete"
+    | "error";
+  message: string;
+}
 
 export interface JobRun {
   id: string;
@@ -30,6 +49,7 @@ export interface JobRun {
 
   message?: string;
   error?: string;
+  events?: JobEvent[];
 }
 
 export interface JobLock {

@@ -5,8 +5,18 @@ import {
   quickCommerceOptionsFromEnvironment,
 } from "@/lib/quickcommerce";
 import { acquireLock, releaseLock } from "./job-lock";
-import { createRun, finishRun, updateRun } from "./job-history";
+import { appendRunEvent, createRun, finishRun, updateRun } from "./job-history";
 import type { JobType } from "./job-types";
+
+export interface ManualDealsJobParameters {
+  limit: number;
+  minimumDiscountPercent: number;
+  keywords: string[];
+  platforms: string[];
+  latitude: number;
+  longitude: number;
+  pincode?: string;
+}
 
 interface ProviderImportResult {
   imported: number;
@@ -19,7 +29,13 @@ interface ProviderImportResult {
 
 async function executeProviderImport(
   progress: (current: number, total: number) => void,
+  event: (
+    stage: "search" | "selection" | "import" | "validation" | "cleanup",
+    message: string,
+    progress?: number,
+  ) => void,
   mode: "general" | "grocery" = "general",
+  parameters?: ManualDealsJobParameters,
 ): Promise<ProviderImportResult> {
   const apiKey = process.env.QUICKCOMMERCE_API_KEY?.trim();
 
@@ -38,11 +54,21 @@ async function executeProviderImport(
 
   progress(25, 100);
 
-  const result = await service.run(
+  const environmentOptions =
     mode === "grocery"
       ? quickCommerceGroceryOptionsFromEnvironment()
-      : quickCommerceOptionsFromEnvironment(),
-  );
+      : quickCommerceOptionsFromEnvironment();
+
+  const result = await service.run({
+    ...environmentOptions,
+    ...(parameters ?? {}),
+    categoryScope:
+      mode === "grocery" ? "Grocery" : environmentOptions.categoryScope,
+    cleanupScope:
+      mode === "grocery" ? "grocery" : environmentOptions.cleanupScope,
+    onProgress: ({ stage, message, progress: eventProgress }) =>
+      event(stage, message, eventProgress),
+  });
 
   progress(90, 100);
 
@@ -68,6 +94,7 @@ async function executeProviderImport(
 export async function runDealsJob(
   type: JobType = "quickcommerce-import",
   triggeredBy: "admin" | "system" = "admin",
+  parameters?: ManualDealsJobParameters,
 ) {
   const run = createRun(type, triggeredBy);
 
@@ -89,9 +116,17 @@ export async function runDealsJob(
           total,
         });
       },
-      type === "grocery-import"
-        ? "grocery"
-        : "general",
+      (stage, message, current) => {
+        appendRunEvent(run.id, stage, message);
+        if (typeof current === "number") {
+          updateRun(run.id, {
+            progress: Math.min(99, Math.max(0, current)),
+            total: 100,
+          });
+        }
+      },
+      type === "grocery-import" ? "grocery" : "general",
+      parameters,
     );
 
     finishRun(run.id, result.failed > 0 ? "partial_success" : "success", {
@@ -104,9 +139,19 @@ export async function runDealsJob(
       failed: result.failed,
       message: result.message,
     });
+    appendRunEvent(
+      run.id,
+      "complete",
+      `${result.message} Imported ${result.imported}; deleted ${result.deleted}; failures ${result.failed}.`,
+    );
 
     return run.id;
   } catch (error) {
+    appendRunEvent(
+      run.id,
+      "error",
+      error instanceof Error ? error.message : "Unknown error",
+    );
     finishRun(run.id, "failed", {
       error: error instanceof Error ? error.message : "Unknown error",
     });
@@ -115,4 +160,26 @@ export async function runDealsJob(
   } finally {
     releaseLock();
   }
+}
+
+export function getManualDealsJobDefaults(): {
+  daily: ManualDealsJobParameters;
+  grocery: ManualDealsJobParameters;
+} {
+  const toParameters = (
+    options: ReturnType<typeof quickCommerceOptionsFromEnvironment>,
+  ): ManualDealsJobParameters => ({
+    limit: options.limit,
+    minimumDiscountPercent: options.minimumDiscountPercent,
+    keywords: options.keywords,
+    platforms: options.platforms,
+    latitude: options.latitude,
+    longitude: options.longitude,
+    pincode: options.pincode,
+  });
+
+  return {
+    daily: toParameters(quickCommerceOptionsFromEnvironment()),
+    grocery: toParameters(quickCommerceGroceryOptionsFromEnvironment()),
+  };
 }

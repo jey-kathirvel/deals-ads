@@ -2,7 +2,7 @@ import { addAudit } from "@/lib/audit/store";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { JobRun, JobStatus, JobType } from "./job-types";
+import { JobRun, JobStatus, JobType, type JobEvent } from "./job-types";
 
 const FILE = path.join(process.cwd(), "data/jobs/runs.json");
 
@@ -36,6 +36,13 @@ export function createRun(type: JobType, triggeredBy: "admin" | "system") {
     skipped: 0,
     deleted: 0,
     failed: 0,
+    events: [
+      {
+        timestamp: new Date().toISOString(),
+        stage: "starting",
+        message: "Job created and execution lock acquired.",
+      },
+    ],
   };
 
   jobs.unshift(run);
@@ -44,6 +51,29 @@ export function createRun(type: JobType, triggeredBy: "admin" | "system") {
   addAudit("Jobs", "UPDATE", "SUCCESS", {});
 
   return run;
+}
+
+export function appendRunEvent(
+  id: string,
+  stage: JobEvent["stage"],
+  message: string,
+) {
+  const jobs = read();
+  const index = jobs.findIndex((job) => job.id === id);
+  if (index === -1) return;
+
+  jobs[index] = {
+    ...jobs[index],
+    events: [
+      ...(jobs[index].events ?? []),
+      {
+        timestamp: new Date().toISOString(),
+        stage,
+        message,
+      },
+    ].slice(-300),
+  };
+  write(jobs);
 }
 
 export function updateRun(id: string, patch: Partial<JobRun>) {
