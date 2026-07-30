@@ -27,7 +27,11 @@ type DealCollection = "daily" | "under99" | "under999";
 
 /* PATCH-004.1F-A */
 type GroceryProvider =
-  "All" | "Blinkit" | "Zepto" | "Flipkart Minutes" | "Amazon Now";
+  | "All"
+  | "Blinkit"
+  | "Zepto"
+  | "Flipkart Minutes"
+  | "Amazon Now";
 
 const groceryProviders: GroceryProvider[] = [
   "All",
@@ -330,6 +334,16 @@ const getProviderClassName = (provider: string | null): string => {
   return normalizeProviderValue(provider).replace(/\s+/g, "-");
 };
 
+const newestDealFirst = (a: Deal, b: Deal): number => {
+  const aImportedAt = Date.parse(a.importedAt || a.updatedAt || "");
+  const bImportedAt = Date.parse(b.importedAt || b.updatedAt || "");
+  const timestampDifference =
+    (Number.isFinite(bImportedAt) ? bImportedAt : 0) -
+    (Number.isFinite(aImportedAt) ? aImportedAt : 0);
+
+  return timestampDifference !== 0 ? timestampDifference : b.id - a.id;
+};
+
 export default function DealsApp({
   initialDeals = [],
   initialCategory = "All",
@@ -339,16 +353,13 @@ export default function DealsApp({
 }) {
   const [category, setCategory] = useState(initialCategory);
   const [query, setQuery] = useState("");
-  const [groceryOnlyProvider, setGroceryOnlyProvider] =
-    useState("All");
-  const [deliveryPincode, setDeliveryPincode] =
-    useState("");
-  const [savedDeliveryPincode, setSavedDeliveryPincode] =
-    useState("");
+  const [groceryOnlyProvider, setGroceryOnlyProvider] = useState("All");
+  const [deliveryPincode, setDeliveryPincode] = useState("");
+  const [savedDeliveryPincode, setSavedDeliveryPincode] = useState("");
   const [pincodeStatus, setPincodeStatus] = useState<
     "idle" | "valid" | "invalid"
   >("idle");
-  const [sort, setSort] = useState("Popular");
+  const [sort, setSort] = useState("Latest");
   const [groceryProvider, setGroceryProvider] =
     useState<GroceryProvider>("All");
   const [saved, setSaved] = useState<number[]>([]);
@@ -442,6 +453,10 @@ export default function DealsApp({
     });
 
     return [...result].sort((a, b) => {
+      if (sort === "Latest") {
+        return newestDealFirst(a, b);
+      }
+
       if (sort === "Discount") {
         const aDiscount = a.mrp > 0 ? 1 - a.price / a.mrp : 0;
         const bDiscount = b.mrp > 0 ? 1 - b.price / b.mrp : 0;
@@ -513,9 +528,7 @@ export default function DealsApp({
     () =>
       Array.from(
         new Set(
-          marketplaceDeals
-            .map((deal) => deal.platform.trim())
-            .filter(Boolean),
+          marketplaceDeals.map((deal) => deal.platform.trim()).filter(Boolean),
         ),
       ).sort((a, b) => a.localeCompare(b)),
     [marketplaceDeals],
@@ -577,8 +590,7 @@ export default function DealsApp({
     const normalizedQuery = query.trim().toLowerCase();
 
     const deals = initialDeals.filter((deal) => {
-      const isGrocery =
-        deal.category.trim().toLowerCase() === "grocery";
+      const isGrocery = deal.category.trim().toLowerCase() === "grocery";
 
       const matchesProvider =
         groceryOnlyProvider === "All" ||
@@ -589,18 +601,18 @@ export default function DealsApp({
         `${deal.title} ${deal.platform} ${deal.category}`.toLowerCase();
 
       return (
-        isGrocery &&
-        matchesProvider &&
-        searchable.includes(normalizedQuery)
+        isGrocery && matchesProvider && searchable.includes(normalizedQuery)
       );
     });
 
     return [...deals].sort((a, b) => {
+      if (sort === "Latest") {
+        return newestDealFirst(a, b);
+      }
+
       if (sort === "Discount") {
-        const aDiscount =
-          a.mrp > 0 ? 1 - a.price / a.mrp : 0;
-        const bDiscount =
-          b.mrp > 0 ? 1 - b.price / b.mrp : 0;
+        const aDiscount = a.mrp > 0 ? 1 - a.price / a.mrp : 0;
+        const bDiscount = b.mrp > 0 ? 1 - b.price / b.mrp : 0;
 
         return bDiscount - aDiscount;
       }
@@ -611,12 +623,7 @@ export default function DealsApp({
 
       return b.votes - a.votes;
     });
-  }, [
-    initialDeals,
-    groceryOnlyProvider,
-    query,
-    sort,
-  ]);
+  }, [initialDeals, groceryOnlyProvider, query, sort]);
 
   const groceryOnlyProviders = useMemo(
     () => [
@@ -624,11 +631,7 @@ export default function DealsApp({
       ...Array.from(
         new Set(
           initialDeals
-            .filter(
-              (deal) =>
-                deal.category.trim().toLowerCase() ===
-                "grocery",
-            )
+            .filter((deal) => deal.category.trim().toLowerCase() === "grocery")
             .map((deal) => deal.platform.trim())
             .filter(Boolean),
         ),
@@ -639,15 +642,11 @@ export default function DealsApp({
 
   useEffect(() => {
     try {
-      const storedPincode =
-        window.localStorage.getItem(
-          "deals-ai-grocery-pincode",
-        );
+      const storedPincode = window.localStorage.getItem(
+        "deals-ai-grocery-pincode",
+      );
 
-      if (
-        storedPincode &&
-        /^[1-9][0-9]{5}$/.test(storedPincode)
-      ) {
+      if (storedPincode && /^[1-9][0-9]{5}$/.test(storedPincode)) {
         setDeliveryPincode(storedPincode);
         setSavedDeliveryPincode(storedPincode);
         setPincodeStatus("valid");
@@ -658,8 +657,7 @@ export default function DealsApp({
   }, []);
 
   const saveDeliveryPincode = () => {
-    const normalizedPincode =
-      deliveryPincode.replace(/\D/g, "").slice(0, 6);
+    const normalizedPincode = deliveryPincode.replace(/\D/g, "").slice(0, 6);
 
     setDeliveryPincode(normalizedPincode);
 
@@ -751,24 +749,18 @@ export default function DealsApp({
     window.setTimeout(() => setCopied(""), 1400);
   };
 
-
   if (isGroceryPage) {
     return (
       <main className="grocery-only-page">
         <div className="grocery-only-top-strip">
           Grocery deals from available retailer feeds
           <span>
-            Always verify price and delivery availability
-            on the retailer site
+            Always verify price and delivery availability on the retailer site
           </span>
         </div>
 
         <header className="grocery-only-header">
-          <a
-            className="brand"
-            href="/"
-            aria-label="Deals home"
-          >
+          <a className="brand" href="/" aria-label="Deals home">
             <span className="brand-mark">%</span>
             <span>
               deals<span className="brand-dot">.</span>
@@ -776,19 +768,14 @@ export default function DealsApp({
             </span>
           </a>
 
-          <a
-            className="grocery-home-link"
-            href="/"
-          >
+          <a className="grocery-home-link" href="/">
             ← All deals
           </a>
         </header>
 
         <section className="grocery-only-hero">
           <div className="grocery-only-heading">
-            <span className="grocery-only-eyebrow">
-              GROCERY DEALS
-            </span>
+            <span className="grocery-only-eyebrow">GROCERY DEALS</span>
 
             <h1>
               All grocery deals.
@@ -796,23 +783,18 @@ export default function DealsApp({
             </h1>
 
             <p>
-              Search grocery products and open the exact
-              retailer item page when a valid product link
-              is available.
+              Search grocery products and open the exact retailer item page when
+              a valid product link is available.
             </p>
           </div>
 
           <div className="grocery-pincode-card">
             <div>
-              <span className="grocery-pincode-icon">
-                ⌖
-              </span>
+              <span className="grocery-pincode-icon">⌖</span>
 
               <div>
                 <strong>Delivery pincode</strong>
-                <small>
-                  Save your six-digit Indian pincode
-                </small>
+                <small>Save your six-digit Indian pincode</small>
               </div>
             </div>
 
@@ -826,9 +808,7 @@ export default function DealsApp({
                 aria-label="Delivery pincode"
                 onChange={(event) => {
                   setDeliveryPincode(
-                    event.target.value
-                      .replace(/\D/g, "")
-                      .slice(0, 6),
+                    event.target.value.replace(/\D/g, "").slice(0, 6),
                   );
                   setPincodeStatus("idle");
                 }}
@@ -839,19 +819,15 @@ export default function DealsApp({
                 }}
               />
 
-              <button
-                type="button"
-                onClick={saveDeliveryPincode}
-              >
+              <button type="button" onClick={saveDeliveryPincode}>
                 Save pincode
               </button>
             </div>
 
             {pincodeStatus === "valid" && (
               <p className="grocery-pincode-success">
-                Pincode {savedDeliveryPincode} saved.
-                Final item availability must be confirmed
-                on the retailer site.
+                Pincode {savedDeliveryPincode} saved. Final item availability
+                must be confirmed on the retailer site.
               </p>
             )}
 
@@ -863,10 +839,7 @@ export default function DealsApp({
           </div>
         </section>
 
-        <section
-          className="grocery-only-catalogue"
-          id="grocery-deals"
-        >
+        <section className="grocery-only-catalogue" id="grocery-deals">
           <div className="grocery-only-toolbar">
             <div className="grocery-only-search">
               <Icon name="search" />
@@ -874,9 +847,7 @@ export default function DealsApp({
               <input
                 type="search"
                 value={query}
-                onChange={(event) =>
-                  setQuery(event.target.value)
-                }
+                onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search grocery products or stores"
                 aria-label="Search grocery deals"
               />
@@ -893,17 +864,14 @@ export default function DealsApp({
             </div>
 
             <div className="grocery-only-sort">
-              <label htmlFor="grocery-sort">
-                Sort by
-              </label>
+              <label htmlFor="grocery-sort">Sort by</label>
 
               <select
                 id="grocery-sort"
                 value={sort}
-                onChange={(event) =>
-                  setSort(event.target.value)
-                }
+                onChange={(event) => setSort(event.target.value)}
               >
+                <option>Latest</option>
                 <option>Popular</option>
                 <option>Discount</option>
                 <option>Price: Low</option>
@@ -911,22 +879,13 @@ export default function DealsApp({
             </div>
           </div>
 
-          <div
-            className="grocery-provider-tabs"
-            aria-label="Grocery retailers"
-          >
+          <div className="grocery-provider-tabs" aria-label="Grocery retailers">
             {groceryOnlyProviders.map((provider) => (
               <button
                 type="button"
                 key={provider}
-                className={
-                  groceryOnlyProvider === provider
-                    ? "active"
-                    : ""
-                }
-                onClick={() =>
-                  setGroceryOnlyProvider(provider)
-                }
+                className={groceryOnlyProvider === provider ? "active" : ""}
+                onClick={() => setGroceryOnlyProvider(provider)}
               >
                 {provider}
               </button>
@@ -948,9 +907,7 @@ export default function DealsApp({
             </div>
 
             {savedDeliveryPincode && (
-              <small>
-                Pincode: {savedDeliveryPincode}
-              </small>
+              <small>Pincode: {savedDeliveryPincode}</small>
             )}
           </div>
 
@@ -959,23 +916,14 @@ export default function DealsApp({
               {groceryOnlyDeals.map((deal) => {
                 const discount =
                   deal.mrp > 0
-                    ? Math.max(
-                        0,
-                        Math.round(
-                          (1 - deal.price / deal.mrp) *
-                            100,
-                        ),
-                      )
+                    ? Math.max(0, Math.round((1 - deal.price / deal.mrp) * 100))
                     : 0;
 
-                const retailerUrl =
-                  specificRetailerUrl(deal.url);
+                const retailerUrl = specificRetailerUrl(deal.url);
 
-                const fallbackRetailerUrl =
-                  providerHomepage(deal.platform);
+                const fallbackRetailerUrl = providerHomepage(deal.platform);
 
-                const destinationUrl =
-                  retailerUrl || fallbackRetailerUrl;
+                const destinationUrl = retailerUrl || fallbackRetailerUrl;
 
                 return (
                   <article
@@ -1000,26 +948,18 @@ export default function DealsApp({
                       <button
                         type="button"
                         className={
-                          saved.includes(deal.id)
-                            ? "heart saved"
-                            : "heart"
+                          saved.includes(deal.id) ? "heart saved" : "heart"
                         }
                         onClick={() =>
                           setSaved((items) =>
                             items.includes(deal.id)
-                              ? items.filter(
-                                  (id) =>
-                                    id !== deal.id,
-                                )
+                              ? items.filter((id) => id !== deal.id)
                               : [...items, deal.id],
                           )
                         }
                         aria-label="Save deal"
                       >
-                        <Icon
-                          name="heart"
-                          filled={saved.includes(deal.id)}
-                        />
+                        <Icon name="heart" filled={saved.includes(deal.id)} />
                       </button>
 
                       {deal.imageUrl ? (
@@ -1030,9 +970,7 @@ export default function DealsApp({
                           loading="lazy"
                         />
                       ) : (
-                        <span className="product-emoji">
-                          {deal.emoji}
-                        </span>
+                        <span className="product-emoji">{deal.emoji}</span>
                       )}
                     </div>
 
@@ -1049,15 +987,11 @@ export default function DealsApp({
                       <h3>{deal.title}</h3>
 
                       <div className="price-row">
-                        <strong>
-                          ₹{inr.format(deal.price)}
-                        </strong>
+                        <strong>₹{inr.format(deal.price)}</strong>
 
                         {deal.mrp > deal.price && (
                           <>
-                            <s>
-                              ₹{inr.format(deal.mrp)}
-                            </s>
+                            <s>₹{inr.format(deal.mrp)}</s>
 
                             <b>{discount}% off</b>
                           </>
@@ -1068,14 +1002,10 @@ export default function DealsApp({
                         <button
                           type="button"
                           className="coupon"
-                          onClick={() =>
-                            copyCode(deal.code)
-                          }
+                          onClick={() => copyCode(deal.code)}
                         >
                           <span>
-                            {copied === deal.code
-                              ? "Copied!"
-                              : deal.code}
+                            {copied === deal.code ? "Copied!" : deal.code}
                           </span>
 
                           <b>
@@ -1117,9 +1047,9 @@ export default function DealsApp({
 
                             {!retailerUrl && (
                               <small className="brand-fallback-note">
-                                Exact item link is unavailable.
-                                Search for this product on the
-                                retailer website to find the offer.
+                                Exact item link is unavailable. Search for this
+                                product on the retailer website to find the
+                                offer.
                               </small>
                             )}
                           </div>
@@ -1138,16 +1068,13 @@ export default function DealsApp({
             <div className="empty grocery-only-empty">
               <span>⌕</span>
               <h3>No matching grocery deals</h3>
-              <p>
-                Try another search or retailer.
-              </p>
+              <p>Try another search or retailer.</p>
             </div>
           )}
         </section>
       </main>
     );
   }
-
 
   return (
     <main>
@@ -1212,7 +1139,9 @@ export default function DealsApp({
 
               <div className="grocery-menu-grid">
                 <a href="/grocery" onClick={() => setMenuOpen(false)}>
-                  <span className="grocery-menu-brand grocery-menu-all">AI</span>
+                  <span className="grocery-menu-brand grocery-menu-all">
+                    AI
+                  </span>
                   <span>
                     <b>All Grocery Deals</b>
                     <small>Open the Grocery experience</small>
@@ -1651,6 +1580,7 @@ export default function DealsApp({
               value={sort}
               onChange={(event) => setSort(event.target.value)}
             >
+              <option>Latest</option>
               <option>Popular</option>
               <option>Discount</option>
               <option>Price: Low</option>
