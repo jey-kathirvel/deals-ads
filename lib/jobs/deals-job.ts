@@ -86,6 +86,7 @@ async function executeProviderImport(
         ? "Isolated Grocery daily import completed."
         : "QuickCommerce daily import completed.",
       `${result.checked} existing deals checked.`,
+      `${result.validationSkipped} selected-platform deals skipped because they were checked within 72 hours.`,
       `${result.deleted} inactive or expired deals deleted.`,
       `${result.retainedOnError} deals retained after provider errors.`,
     ].join(" "),
