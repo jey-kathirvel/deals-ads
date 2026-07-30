@@ -110,6 +110,7 @@ function ParameterCard({
   title,
   description,
   parameters,
+  fullCoverageKeywords,
   grocery,
   disabled,
   onChange,
@@ -118,13 +119,90 @@ function ParameterCard({
   title: string;
   description: string;
   parameters: JobParameters;
+  fullCoverageKeywords: string[];
   grocery: boolean;
   disabled: boolean;
   onChange: (parameters: JobParameters) => void;
   onRun: () => void;
 }) {
+  const [keywordPreset, setKeywordPreset] = useState("custom");
   const inputClass =
     "mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-100";
+  const keywordPresets = grocery
+    ? [
+        {
+          value: "essentials",
+          label: "Grocery essentials",
+          keywords: [
+            "milk",
+            "rice",
+            "atta",
+            "dal",
+            "cooking oil",
+            "vegetables",
+            "fruits",
+            "snacks",
+          ],
+        },
+        {
+          value: "household",
+          label: "Household essentials",
+          keywords: [
+            "detergent",
+            "soap",
+            "shampoo",
+            "toothpaste",
+            "household essentials",
+            "personal care",
+          ],
+        },
+        {
+          value: "full",
+          label: "Full grocery coverage",
+          keywords: fullCoverageKeywords,
+        },
+      ]
+    : [
+        {
+          value: "amazon",
+          label: "Amazon popular products",
+          keywords: [
+            "headphones",
+            "earbuds",
+            "mobile phone",
+            "laptop",
+            "smart tv",
+          ],
+        },
+        {
+          value: "mobiles",
+          label: "Mobile phones",
+          keywords: [
+            "mobile phone",
+            "iphone",
+            "samsung galaxy",
+            "oneplus mobile",
+            "redmi mobile",
+          ],
+        },
+        {
+          value: "electronics",
+          label: "Electronics",
+          keywords: [
+            "headphones",
+            "smart watches",
+            "laptop",
+            "smart tv",
+            "computer accessories",
+            "power bank",
+          ],
+        },
+        {
+          value: "full",
+          label: "Full daily-deals coverage",
+          keywords: fullCoverageKeywords,
+        },
+      ];
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -247,23 +325,55 @@ function ParameterCard({
         </label>
 
         <label className="text-sm font-semibold text-slate-700 sm:col-span-2">
+          Keyword preset
+          <select
+            className={inputClass}
+            value={keywordPreset}
+            onChange={(event) => {
+              const value = event.target.value;
+              setKeywordPreset(value);
+              const preset = keywordPresets.find(
+                (candidate) => candidate.value === value,
+              );
+              if (preset) {
+                onChange({ ...parameters, keywords: [...preset.keywords] });
+              }
+            }}
+          >
+            <option value="custom">Custom / keep current keywords</option>
+            {keywordPresets.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-xs font-normal text-slate-500">
+            A preset replaces the keyword list below. You can edit it before
+            running the job.
+          </span>
+        </label>
+
+        <label className="text-sm font-semibold text-slate-700 sm:col-span-2">
           Search keywords — one per line
           <textarea
             className={`${inputClass} min-h-48 resize-y`}
             value={parameters.keywords.join("\n")}
-            onChange={(event) =>
+            onChange={(event) => {
+              setKeywordPreset("custom");
               onChange({
                 ...parameters,
                 keywords: event.target.value.split("\n"),
-              })
-            }
+              });
+            }}
           />
         </label>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5 sm:col-span-2">
           <p className="max-w-md text-xs leading-5 text-slate-500">
-            Existing deals are checked first. Provider outages retain existing
-            deals; only confirmed inactive or expired deals are deleted.
+            Only selected-platform deals due for validation are checked.
+            Successful checks remain fresh for 72 hours. Provider outages retain
+            existing deals; only confirmed inactive or expired deals are
+            deleted.
           </p>
           <button
             type="button"
@@ -288,6 +398,7 @@ export default function JobsPage() {
   );
   const [groceryParameters, setGroceryParameters] =
     useState<JobParameters | null>(null);
+  const [jobDefaults, setJobDefaults] = useState<DefaultsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -315,6 +426,7 @@ export default function JobsPage() {
 
       setHistory((await historyResponse.json()) as JobRun[]);
       const defaults = (await defaultsResponse.json()) as DefaultsResponse;
+      setJobDefaults((current) => current ?? defaults);
       setDailyParameters((current) => current ?? defaults.daily);
       setGroceryParameters((current) => current ?? defaults.grocery);
       setMessage("");
@@ -458,12 +570,13 @@ export default function JobsPage() {
         </div>
       )}
 
-      {dailyParameters && groceryParameters && (
+      {dailyParameters && groceryParameters && jobDefaults && (
         <section className="grid gap-6 xl:grid-cols-2">
           <ParameterCard
             title="Daily Deals"
             description="Discover and import general deals on demand."
             parameters={dailyParameters}
+            fullCoverageKeywords={jobDefaults.daily.keywords}
             grocery={false}
             disabled={
               actionLoading || loading || Boolean(currentData?.lock.locked)
@@ -475,6 +588,7 @@ export default function JobsPage() {
             title="Grocery Deals"
             description="Discover genuine grocery deals on demand."
             parameters={groceryParameters}
+            fullCoverageKeywords={jobDefaults.grocery.keywords}
             grocery
             disabled={
               actionLoading || loading || Boolean(currentData?.lock.locked)

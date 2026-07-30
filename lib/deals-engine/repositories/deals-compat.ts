@@ -1,9 +1,4 @@
-import {
-  mkdir,
-  readFile,
-  rename,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { Deal } from "@/lib/deal-types";
 import { withAmazonAssociateTag } from "@/lib/amazon-affiliate-url";
@@ -55,7 +50,8 @@ function normalizedDeal(value: unknown): Deal | null {
     expiryDate: item.expiryDate ?? "",
     couponTerms: item.couponTerms ?? "",
     sourceUrl: item.sourceUrl ?? item.url,
-    lastCheckedAt: item.lastCheckedAt ?? item.updatedAt ?? new Date().toISOString(),
+    lastCheckedAt:
+      item.lastCheckedAt ?? item.updatedAt ?? new Date().toISOString(),
     importedAt: item.importedAt ?? item.updatedAt ?? new Date().toISOString(),
     updatedAt: item.updatedAt ?? new Date().toISOString(),
     providerItemId: item.providerItemId,
@@ -115,19 +111,40 @@ export async function getLegacyDeals(): Promise<Deal[]> {
 export async function persistLegacyDeal(deal: Deal): Promise<Deal> {
   return mutate((deals) => {
     const now = new Date().toISOString();
-    const index = deal.id > 0
-      ? deals.findIndex((item) => item.id === deal.id)
-      : -1;
+    const index =
+      deal.id > 0 ? deals.findIndex((item) => item.id === deal.id) : -1;
     const persisted = {
       ...clone(deal),
-      id: index >= 0
-        ? deals[index].id
-        : Math.max(0, ...deals.map((item) => item.id)) + 1,
+      id:
+        index >= 0
+          ? deals[index].id
+          : Math.max(0, ...deals.map((item) => item.id)) + 1,
       updatedAt: now,
     };
     if (index >= 0) deals[index] = persisted;
     else deals.push(persisted);
     return clone(persisted);
+  });
+}
+
+export async function markLegacyDealsChecked(
+  ids: readonly number[],
+  checkedAt = new Date().toISOString(),
+): Promise<number> {
+  const selectedIds = new Set(ids);
+
+  if (selectedIds.size === 0) return 0;
+
+  return mutate((deals) => {
+    let updated = 0;
+
+    for (const deal of deals) {
+      if (!selectedIds.has(deal.id)) continue;
+      deal.lastCheckedAt = checkedAt;
+      updated += 1;
+    }
+
+    return updated;
   });
 }
 

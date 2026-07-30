@@ -5,6 +5,7 @@ import {
   deleteDeal,
   getDeals,
   importDeals,
+  markDealsChecked,
 } from "@/lib/deals-store";
 import {
   QuickCommerceClient,
@@ -36,9 +37,48 @@ export interface QuickCommerceDailyResult {
   skipped: number;
   importErrors: string[];
   checked: number;
+  validationSkipped: number;
   deleted: number;
   retainedOnError: number;
   providerFailures: string[];
+}
+
+const VALIDATION_FRESHNESS_MS = 72 * 60 * 60 * 1000;
+const CREDIT_FAILURE_LIMIT = 3;
+
+function platformKey(value: string): string {
+  const normalized = value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  if (normalized.includes("flipkartminutes")) return "flipkartminutes";
+  if (normalized.includes("blinkit")) return "blinkit";
+  if (normalized.includes("bigbasket")) return "bigbasket";
+  if (normalized.includes("amazon")) return "amazon";
+  if (normalized.includes("flipkart")) return "flipkart";
+  if (normalized.includes("zepto")) return "zepto";
+  if (normalized.includes("swiggy")) return "swiggy";
+  if (normalized.includes("myntra")) return "myntra";
+  if (normalized.includes("nykaa")) return "nykaa";
+  return normalized;
+}
+
+function isFreshlyValidated(deal: Deal, now: number): boolean {
+  const checkedAt = Date.parse(deal.lastCheckedAt);
+  return (
+    Number.isFinite(checkedAt) && now - checkedAt < VALIDATION_FRESHNESS_MS
+  );
+}
+
+function isCreditFailure(error: unknown): boolean {
+  if (
+    error instanceof QuickCommerceHttpError &&
+    (error.status === 402 || error.status === 429)
+  ) {
+    return true;
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  return /\b(?:credit|credits|quota|balance|payment required|rate limit)\b/i.test(
+    message,
+  );
 }
 
 function discount(product: QuickCommerceProduct): number {
@@ -473,8 +513,9 @@ export class QuickCommerceDailyDealsService {
     let rejectedNonGrocery = 0;
     const totalSearches = options.keywords.length * options.platforms.length;
     let completedSearches = 0;
+    let consecutiveSearchCreditFailures = 0;
 
-    for (const keyword of options.keywords) {
+    searchLoop: for (const keyword of options.keywords) {
       for (const platform of options.platforms) {
         options.onProgress?.({
           stage: "search",
@@ -492,6 +533,7 @@ export class QuickCommerceDailyDealsService {
             longitude: options.longitude,
             pincode: options.pincode,
           });
+          consecutiveSearchCreditFailures = 0;
           for (const product of products) {
             const productType = productTypeFor(product, keyword);
 
@@ -553,6 +595,21 @@ export class QuickCommerceDailyDealsService {
             stage: "search",
             message: `Provider error for ${failure}`,
           });
+          if (isCreditFailure(error)) {
+            consecutiveSearchCreditFailures += 1;
+            if (consecutiveSearchCreditFailures >= CREDIT_FAILURE_LIMIT) {
+              const stoppedMessage =
+                "Search stopped after 3 consecutive credit, quota or rate-limit errors to protect the remaining API credits.";
+              providerFailures.push(stoppedMessage);
+              options.onProgress?.({
+                stage: "search",
+                message: stoppedMessage,
+              });
+              break searchLoop;
+            }
+          } else {
+            consecutiveSearchCreditFailures = 0;
+          }
         } finally {
           completedSearches += 1;
         }
@@ -568,6 +625,19 @@ export class QuickCommerceDailyDealsService {
             options.categoryScope?.trim().toLowerCase(),
         )
       : existing;
+
+    const selectedPlatforms = new Set(options.platforms.map(platformKey));
+    const now = Date.now();
+    const selectedPlatformDeals = scopedExisting.filter((deal) =>
+      selectedPlatforms.has(
+        platformKey(deal.providerPlatform?.trim() || deal.platform),
+      ),
+    );
+    const validationDeals = selectedPlatformDeals.filter(
+      (deal) => !isFreshlyValidated(deal, now),
+    );
+    const validationSkipped =
+      selectedPlatformDeals.length - validationDeals.length;
 
     const publicationUrls = new Set<string>();
     const publicationTitles = new Set<string>();
@@ -738,12 +808,14 @@ export class QuickCommerceDailyDealsService {
     let checked = 0;
     let deleted = 0;
     let retainedOnError = 0;
+    let consecutiveValidationCreditFailures = 0;
+    const successfullyCheckedIds: number[] = [];
     options.onProgress?.({
       stage: "validation",
-      message: `Validating ${scopedExisting.length} existing deals.`,
+      message: `Validating ${validationDeals.length} due deals from the selected platforms; ${validationSkipped} skipped because they were checked within 72 hours.`,
       progress: 80,
     });
-    for (const deal of scopedExisting) {
+    for (const deal of validationDeals) {
       const identity = validationIdentity(deal);
       if (!identity) continue;
       checked += 1;
@@ -754,9 +826,12 @@ export class QuickCommerceDailyDealsService {
           longitude: options.longitude,
           pincode: options.pincode,
         });
+        consecutiveValidationCreditFailures = 0;
         if (current && (!current.available || current.offerPrice <= 0)) {
           await deleteDeal(deal.id);
           deleted += 1;
+        } else if (current) {
+          successfullyCheckedIds.push(deal.id);
         }
       } catch (error) {
         /*
@@ -764,24 +839,36 @@ export class QuickCommerceDailyDealsService {
          * that an existing deal is inactive. Keep the deal unless the provider
          * explicitly returns it as unavailable or invalid.
          */
-        if (error instanceof QuickCommerceHttpError && error.status === 404) {
-          retainedOnError += 1;
+        retainedOnError += 1;
+        if (isCreditFailure(error)) {
+          consecutiveValidationCreditFailures += 1;
+          if (consecutiveValidationCreditFailures >= CREDIT_FAILURE_LIMIT) {
+            const stoppedMessage =
+              "Validation stopped after 3 consecutive credit, quota or rate-limit errors; unvalidated deals were retained.";
+            providerFailures.push(stoppedMessage);
+            options.onProgress?.({
+              stage: "validation",
+              message: stoppedMessage,
+            });
+            break;
+          }
         } else {
-          retainedOnError += 1;
+          consecutiveValidationCreditFailures = 0;
         }
       }
 
-      if (checked === scopedExisting.length || checked % 10 === 0) {
+      if (checked === validationDeals.length || checked % 10 === 0) {
         options.onProgress?.({
           stage: "validation",
-          message: `Validated ${checked} of ${scopedExisting.length} existing deals; ${deleted} deleted and ${retainedOnError} retained after provider errors.`,
+          message: `Validated ${checked} of ${validationDeals.length} due deals; ${deleted} deleted and ${retainedOnError} retained after provider errors.`,
           progress:
-            scopedExisting.length > 0
-              ? 80 + Math.round((checked / scopedExisting.length) * 12)
+            validationDeals.length > 0
+              ? 80 + Math.round((checked / validationDeals.length) * 12)
               : 92,
         });
       }
     }
+    await markDealsChecked(successfullyCheckedIds);
 
     /*
      * Hard-delete only deals already confirmed as expired or inactive.
@@ -815,6 +902,7 @@ export class QuickCommerceDailyDealsService {
       skipped: importResult.skipped,
       importErrors: importResult.errors,
       checked,
+      validationSkipped,
       deleted,
       retainedOnError,
       providerFailures,
