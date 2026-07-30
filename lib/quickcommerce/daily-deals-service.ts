@@ -22,6 +22,11 @@ export interface QuickCommerceDailyOptions {
   pincode?: string;
   categoryScope?: string;
   cleanupScope?: "all" | "grocery";
+  onProgress?: (event: {
+    stage: "search" | "selection" | "import" | "validation" | "cleanup";
+    message: string;
+    progress?: number;
+  }) => void;
 }
 
 export interface QuickCommerceDailyResult {
@@ -54,9 +59,7 @@ function discount(product: QuickCommerceProduct): number {
  * banks must remain in Electronics even when they were discovered through a
  * mobile-related provider search.
  */
-function isMobilePhoneProduct(
-  product: QuickCommerceProduct,
-): boolean {
+function isMobilePhoneProduct(product: QuickCommerceProduct): boolean {
   const title = product.name
     .toLowerCase()
     .replace(/[()[\],|/]+/g, " ")
@@ -74,10 +77,7 @@ function isMobilePhoneProduct(
   const compatibilityPattern =
     /\b(?:compatible|compatibility|designed for|for iphone|for samsung|for galaxy|for oneplus|for realme|for redmi|for vivo|for oppo|for poco|for smartphone|works with)\b/;
 
-  if (
-    accessoryPattern.test(title) ||
-    compatibilityPattern.test(title)
-  ) {
+  if (accessoryPattern.test(title) || compatibilityPattern.test(title)) {
     return false;
   }
 
@@ -86,9 +86,7 @@ function isMobilePhoneProduct(
    * as a phone.
    */
   if (
-    /\b(?:5g|4g)?\s*(?:smartphone|mobile phone|feature phone)\b/.test(
-      title,
-    )
+    /\b(?:5g|4g)?\s*(?:smartphone|mobile phone|feature phone)\b/.test(title)
   ) {
     return true;
   }
@@ -114,7 +112,6 @@ function isMobilePhoneProduct(
 
   return androidPhonePattern.test(title);
 }
-
 
 /**
  * Determines whether a QuickCommerce result is a genuine Grocery product.
@@ -207,7 +204,6 @@ function productTypeFor(
   )
     return "Smart Watches";
 
-
   if (/\bmilk\b/.test(value)) return "Milk";
   if (/\bcurd\b|\byogurt\b/.test(value)) return "Curd";
   if (/\bpaneer\b/.test(value)) return "Paneer";
@@ -223,29 +219,22 @@ function productTypeFor(
   if (/\btea\b/.test(value)) return "Tea";
   if (/\bcoffee\b/.test(value)) return "Coffee";
 
-  if (/\bbiscuit\b|\bcookie\b/.test(value))
-    return "Biscuits";
+  if (/\bbiscuit\b|\bcookie\b/.test(value)) return "Biscuits";
 
-  if (/\bchips\b|\bsnack\b/.test(value))
-    return "Snacks";
+  if (/\bchips\b|\bsnack\b/.test(value)) return "Snacks";
 
-  if (/\bfruit\b|\bapple\b|\bbanana\b/.test(value))
-    return "Fruits";
+  if (/\bfruit\b|\bapple\b|\bbanana\b/.test(value)) return "Fruits";
 
   if (/\bvegetable\b|\bonion\b|\btomato\b|\bpotato\b/.test(value))
     return "Vegetables";
 
-  if (/\bdetergent\b/.test(value))
-    return "Detergents";
+  if (/\bdetergent\b/.test(value)) return "Detergents";
 
-  if (/\bsoap\b/.test(value))
-    return "Soap";
+  if (/\bsoap\b/.test(value)) return "Soap";
 
-  if (/\bshampoo\b/.test(value))
-    return "Shampoo";
+  if (/\bshampoo\b/.test(value)) return "Shampoo";
 
-  if (/\btoothpaste\b/.test(value))
-    return "Toothpaste";
+  if (/\btoothpaste\b/.test(value)) return "Toothpaste";
 
   if (isMobilePhoneProduct(product)) {
     return "Mobile Phones";
@@ -277,11 +266,7 @@ function productTypeFor(
 
   if (/\bearbuds?\b|\btws\b|\bairpods?\b/.test(value)) return "Earbuds";
 
-  if (
-    /\bheadphones?\b|\bheadsets?\b|\bneckband\b/.test(
-      value,
-    )
-  )
+  if (/\bheadphones?\b|\bheadsets?\b|\bneckband\b/.test(value))
     return "Headphones";
 
   if (
@@ -291,18 +276,9 @@ function productTypeFor(
   )
     return "Speakers";
 
-  if (
-    /\bpower bank\b|\bportable charger\b/.test(
-      value,
-    )
-  )
-    return "Power Banks";
+  if (/\bpower bank\b|\bportable charger\b/.test(value)) return "Power Banks";
 
-  if (
-    /\bcharger\b|\bcharging adapter\b|\bwall adapter\b/.test(
-      value,
-    )
-  )
+  if (/\bcharger\b|\bcharging adapter\b|\bwall adapter\b/.test(value))
     return "Chargers";
 
   if (
@@ -314,71 +290,30 @@ function productTypeFor(
 
   if (/\bkeyboard\b/.test(value)) return "Keyboards";
 
-  if (
-    /\bmouse\b|\btrackball\b/.test(
-      value,
-    )
-  )
-    return "Computer Mouse";
+  if (/\bmouse\b|\btrackball\b/.test(value)) return "Computer Mouse";
 
   if (/\bmouse pad\b|\bdesk mat\b/.test(value)) return "Mouse Pads";
 
   if (/\bwebcam\b|\bweb camera\b/.test(value)) return "Webcams";
 
-  if (
-    /\bprinter\b|\bmultifunction printer\b/.test(
-      value,
-    )
-  )
-    return "Printers";
+  if (/\bprinter\b|\bmultifunction printer\b/.test(value)) return "Printers";
 
-  if (
-    /\bssd\b|\bsolid state drive\b/.test(
-      value,
-    )
-  )
-    return "SSD Storage";
+  if (/\bssd\b|\bsolid state drive\b/.test(value)) return "SSD Storage";
 
-  if (
-    /\bhard disk\b|\bhard drive\b|\bhdd\b/.test(
-      value,
-    )
-  )
-    return "Hard Drives";
+  if (/\bhard disk\b|\bhard drive\b|\bhdd\b/.test(value)) return "Hard Drives";
 
-  if (
-    /\bwi[\s-]?fi router\b|\bwireless router\b|\bmesh router\b/.test(
-      value,
-    )
-  )
+  if (/\bwi[\s-]?fi router\b|\bwireless router\b|\bmesh router\b/.test(value))
     return "Routers";
 
-  if (
-    /\btempered glass\b|\bscreen protector\b/.test(
-      value,
-    )
-  )
+  if (/\btempered glass\b|\bscreen protector\b/.test(value))
     return "Screen Protectors";
 
-  if (
-    /\bphone case\b|\bmobile case\b|\bback cover\b/.test(
-      value,
-    )
-  )
+  if (/\bphone case\b|\bmobile case\b|\bback cover\b/.test(value))
     return "Mobile Cases";
 
-  if (
-    /\blaptop stand\b|\bnotebook stand\b/.test(
-      value,
-    )
-  )
-    return "Laptop Stands";
+  if (/\blaptop stand\b|\bnotebook stand\b/.test(value)) return "Laptop Stands";
 
-  if (
-    /\bshoe\b|\bsneaker\b|\bsandal\b|\bslipper\b/.test(
-      value,
-    )
-  )
+  if (/\bshoe\b|\bsneaker\b|\bsandal\b|\bslipper\b/.test(value))
     return "Footwear";
 
   if (
@@ -388,11 +323,7 @@ function productTypeFor(
   )
     return "Clothing";
 
-  if (
-    /\bmakeup\b|\blipstick\b|\bmascara\b|\bfoundation\b/.test(
-      value,
-    )
-  )
+  if (/\bmakeup\b|\blipstick\b|\bmascara\b|\bfoundation\b/.test(value))
     return "Makeup";
 
   if (
@@ -484,10 +415,7 @@ function publicCategoryFor(
   detectedCategory: string,
   productType: string,
 ): string {
-  if (
-    productType === "Mobile Phones" &&
-    isMobilePhoneProduct(product)
-  ) {
+  if (productType === "Mobile Phones" && isMobilePhoneProduct(product)) {
     return "Mobiles";
   }
 
@@ -500,11 +428,7 @@ function toRow(
   productType: string,
 ): Record<string, string> {
   const saving = discount(product);
-  const publicCategory = publicCategoryFor(
-    product,
-    category,
-    productType,
-  );
+  const publicCategory = publicCategoryFor(product, category, productType);
   return {
     title: product.name,
     platform: product.platform,
@@ -547,9 +471,19 @@ export class QuickCommerceDailyDealsService {
     >();
     const providerFailures: string[] = [];
     let rejectedNonGrocery = 0;
+    const totalSearches = options.keywords.length * options.platforms.length;
+    let completedSearches = 0;
 
     for (const keyword of options.keywords) {
       for (const platform of options.platforms) {
+        options.onProgress?.({
+          stage: "search",
+          message: `Searching ${platform} for "${keyword}".`,
+          progress:
+            totalSearches > 0
+              ? 25 + Math.round((completedSearches / totalSearches) * 35)
+              : 25,
+        });
         try {
           const products = await this.client.search({
             query: keyword,
@@ -574,12 +508,10 @@ export class QuickCommerceDailyDealsService {
                   : options.minimumDiscountPercent;
 
             const groceryScope =
-              options.categoryScope?.trim().toLowerCase() ===
-              "grocery";
+              options.categoryScope?.trim().toLowerCase() === "grocery";
 
             const genuineGrocery =
-              !groceryScope ||
-              isGenuineGroceryProduct(product, keyword);
+              !groceryScope || isGenuineGroceryProduct(product, keyword);
 
             if (groceryScope && !genuineGrocery) {
               rejectedNonGrocery += 1;
@@ -602,18 +534,27 @@ export class QuickCommerceDailyDealsService {
                  * are classified as Other Deals and do not appear on
                  * /grocery.
                  */
-                category:
-                  options.categoryScope?.trim() ||
-                  categoryFor(keyword),
+                category: options.categoryScope?.trim() || categoryFor(keyword),
 
                 productType,
               });
             }
           }
+          options.onProgress?.({
+            stage: "search",
+            message: `${platform} / "${keyword}": ${products.length} results received; ${candidates.size} unique eligible candidates so far.`,
+          });
         } catch (error) {
-          providerFailures.push(
-            `${platform}/${keyword}: ${error instanceof Error ? error.message : String(error)}`,
-          );
+          const failure = `${platform}/${keyword}: ${
+            error instanceof Error ? error.message : String(error)
+          }`;
+          providerFailures.push(failure);
+          options.onProgress?.({
+            stage: "search",
+            message: `Provider error for ${failure}`,
+          });
+        } finally {
+          completedSearches += 1;
         }
       }
     }
@@ -732,10 +673,7 @@ export class QuickCommerceDailyDealsService {
       publicationUrls.add(identity.url);
       publicationTitles.add(identity.title);
 
-      productTypeCounts.set(
-        candidate.productType,
-        currentTypeCount + 1,
-      );
+      productTypeCounts.set(candidate.productType, currentTypeCount + 1);
 
       ranked.push(candidate);
 
@@ -753,15 +691,17 @@ export class QuickCommerceDailyDealsService {
         finalLimit,
         maximumPerProductType,
         candidateProductTypes: Object.fromEntries(
-          [...rankedCandidates.reduce((counts, candidate) => {
-            counts.set(
-              candidate.productType,
-              (counts.get(candidate.productType) ?? 0) + 1,
-            );
-            return counts;
-          }, new Map<string, number>()).entries()].sort((left, right) =>
-            left[0].localeCompare(right[0]),
-          ),
+          [
+            ...rankedCandidates
+              .reduce((counts, candidate) => {
+                counts.set(
+                  candidate.productType,
+                  (counts.get(candidate.productType) ?? 0) + 1,
+                );
+                return counts;
+              }, new Map<string, number>())
+              .entries(),
+          ].sort((left, right) => left[0].localeCompare(right[0])),
         ),
         productTypes: Object.fromEntries(
           [...productTypeCounts.entries()].sort((left, right) =>
@@ -771,6 +711,17 @@ export class QuickCommerceDailyDealsService {
       }),
     );
 
+    options.onProgress?.({
+      stage: "selection",
+      message: `Selected ${ranked.length} deals from ${candidates.size} eligible candidates. ${rejectedNonGrocery} non-grocery results rejected.`,
+      progress: 65,
+    });
+    options.onProgress?.({
+      stage: "import",
+      message: `Importing ${ranked.length} selected deals.`,
+      progress: 70,
+    });
+
     const importResult = await importDeals(
       ranked.map(({ product, category, productType }) =>
         toRow(product, category, productType),
@@ -778,9 +729,20 @@ export class QuickCommerceDailyDealsService {
       { publish: true, source: "quickcommerce" },
     );
 
+    options.onProgress?.({
+      stage: "import",
+      message: `Import completed: ${importResult.imported} added, ${importResult.skipped} skipped, ${importResult.errors.length} failed.`,
+      progress: 78,
+    });
+
     let checked = 0;
     let deleted = 0;
     let retainedOnError = 0;
+    options.onProgress?.({
+      stage: "validation",
+      message: `Validating ${scopedExisting.length} existing deals.`,
+      progress: 80,
+    });
     for (const deal of scopedExisting) {
       const identity = validationIdentity(deal);
       if (!identity) continue;
@@ -808,18 +770,43 @@ export class QuickCommerceDailyDealsService {
           retainedOnError += 1;
         }
       }
+
+      if (checked === scopedExisting.length || checked % 10 === 0) {
+        options.onProgress?.({
+          stage: "validation",
+          message: `Validated ${checked} of ${scopedExisting.length} existing deals; ${deleted} deleted and ${retainedOnError} retained after provider errors.`,
+          progress:
+            scopedExisting.length > 0
+              ? 80 + Math.round((checked / scopedExisting.length) * 12)
+              : 92,
+        });
+      }
     }
 
     /*
      * Hard-delete only deals already confirmed as expired or inactive.
      * Active deals are retained even when absent from the latest search result.
      */
+    options.onProgress?.({
+      stage: "cleanup",
+      message:
+        options.cleanupScope === "grocery"
+          ? "Hard-deleting confirmed inactive or expired Grocery deals."
+          : "Hard-deleting confirmed inactive or expired published deals.",
+      progress: 94,
+    });
+
     const lifecycleResult =
       options.cleanupScope === "grocery"
         ? await cleanupGroceryDeals()
         : await cleanupDeals();
 
     deleted += lifecycleResult.deletedUnsavedDeals;
+    options.onProgress?.({
+      stage: "cleanup",
+      message: `Cleanup completed. ${lifecycleResult.deletedUnsavedDeals} stale deals permanently deleted.`,
+      progress: 98,
+    });
 
     return {
       discovered: candidates.size,
@@ -954,17 +941,10 @@ export function quickCommerceOptionsFromEnvironment(): QuickCommerceDailyOptions
 }
 
 export function quickCommerceGroceryOptionsFromEnvironment(): QuickCommerceDailyOptions {
-  const split = (
-    value: string | undefined,
-    fallback: string[],
-  ) =>
-    (value?.split(",") ?? fallback)
-      .map((item) => item.trim())
-      .filter(Boolean);
+  const split = (value: string | undefined, fallback: string[]) =>
+    (value?.split(",") ?? fallback).map((item) => item.trim()).filter(Boolean);
 
-  const configuredLimit = Number(
-    process.env.GROCERY_DAILY_LIMIT ?? "20",
-  );
+  const configuredLimit = Number(process.env.GROCERY_DAILY_LIMIT ?? "20");
 
   return {
     /*
@@ -974,17 +954,10 @@ export function quickCommerceGroceryOptionsFromEnvironment(): QuickCommerceDaily
      */
     limit: Math.max(
       20,
-      Math.min(
-        50,
-        Number.isFinite(configuredLimit)
-          ? configuredLimit
-          : 20,
-      ),
+      Math.min(50, Number.isFinite(configuredLimit) ? configuredLimit : 20),
     ),
 
-    minimumDiscountPercent: Number(
-      process.env.GROCERY_MINIMUM_DISCOUNT ?? "1",
-    ),
+    minimumDiscountPercent: Number(process.env.GROCERY_MINIMUM_DISCOUNT ?? "1"),
 
     keywords: Array.from(
       new Set(
@@ -1011,18 +984,15 @@ export function quickCommerceGroceryOptionsFromEnvironment(): QuickCommerceDaily
       ),
     ),
 
-    platforms: split(
-      process.env.GROCERY_PLATFORMS,
-      [
-        "BlinkIt",
-        "Zepto",
-        "Swiggy Instamart",
-        "Flipkart Minutes",
-        "Amazon Fresh",
-        "BigBasket",
-        "JioMart",
-      ],
-    ),
+    platforms: split(process.env.GROCERY_PLATFORMS, [
+      "BlinkIt",
+      "Zepto",
+      "Swiggy Instamart",
+      "Flipkart Minutes",
+      "Amazon Fresh",
+      "BigBasket",
+      "JioMart",
+    ]),
 
     latitude: Number(
       process.env.GROCERY_LATITUDE ??
@@ -1045,4 +1015,3 @@ export function quickCommerceGroceryOptionsFromEnvironment(): QuickCommerceDaily
     cleanupScope: "grocery",
   };
 }
-

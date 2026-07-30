@@ -19,6 +19,11 @@ type JobRun = {
   failed: number;
   message?: string;
   error?: string;
+  events?: Array<{
+    timestamp: string;
+    stage: string;
+    message: string;
+  }>;
 };
 
 type CurrentResponse = {
@@ -30,6 +35,21 @@ type CurrentResponse = {
   current: JobRun | null;
 };
 
+type JobParameters = {
+  limit: number;
+  minimumDiscountPercent: number;
+  keywords: string[];
+  platforms: string[];
+  latitude: number;
+  longitude: number;
+  pincode?: string;
+};
+
+type DefaultsResponse = {
+  daily: JobParameters;
+  grocery: JobParameters;
+};
+
 function formatDate(value?: string | null): string {
   if (!value) {
     return "Not available";
@@ -37,9 +57,7 @@ function formatDate(value?: string | null): string {
 
   const date = new Date(value);
 
-  return Number.isNaN(date.getTime())
-    ? value
-    : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
 function formatDuration(value?: number): string {
@@ -76,55 +94,229 @@ function statusClass(value: string): string {
   return "bg-slate-100 text-slate-700";
 }
 
-function Metric({
-  title,
-  value,
-}: {
-  title: string;
-  value: React.ReactNode;
-}) {
+function Metric({ title, value }: { title: string; value: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {title}
       </div>
 
-      <div className="mt-2 text-xl font-bold text-slate-900">
-        {value}
-      </div>
+      <div className="mt-2 text-xl font-bold text-slate-900">{value}</div>
     </div>
   );
 }
 
+function ParameterCard({
+  title,
+  description,
+  parameters,
+  grocery,
+  disabled,
+  onChange,
+  onRun,
+}: {
+  title: string;
+  description: string;
+  parameters: JobParameters;
+  grocery: boolean;
+  disabled: boolean;
+  onChange: (parameters: JobParameters) => void;
+  onRun: () => void;
+}) {
+  const inputClass =
+    "mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-100";
+
+  return (
+    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-amber-200 bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-200 px-6 py-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-black text-slate-950">{title}</h2>
+            <p className="mt-1 text-sm font-medium text-slate-700">
+              {description}
+            </p>
+          </div>
+          <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-bold uppercase tracking-wide text-yellow-300">
+            Manual
+          </span>
+        </div>
+      </div>
+
+      <div className="grid gap-4 p-6 sm:grid-cols-2">
+        <label className="text-sm font-semibold text-slate-700">
+          Deal limit
+          <input
+            className={inputClass}
+            type="number"
+            min={grocery ? 20 : 1}
+            max={50}
+            value={parameters.limit}
+            onChange={(event) =>
+              onChange({
+                ...parameters,
+                limit: Number(event.target.value),
+              })
+            }
+          />
+          <span className="mt-1 block text-xs font-normal text-slate-500">
+            {grocery ? "Allowed: 20–50" : "Allowed: 1–50"}
+          </span>
+        </label>
+
+        <label className="text-sm font-semibold text-slate-700">
+          Minimum discount %
+          <input
+            className={inputClass}
+            type="number"
+            min={0}
+            max={100}
+            value={parameters.minimumDiscountPercent}
+            onChange={(event) =>
+              onChange({
+                ...parameters,
+                minimumDiscountPercent: Number(event.target.value),
+              })
+            }
+          />
+        </label>
+
+        <label className="text-sm font-semibold text-slate-700">
+          Latitude
+          <input
+            className={inputClass}
+            type="number"
+            step="any"
+            min={-90}
+            max={90}
+            value={parameters.latitude}
+            onChange={(event) =>
+              onChange({
+                ...parameters,
+                latitude: Number(event.target.value),
+              })
+            }
+          />
+        </label>
+
+        <label className="text-sm font-semibold text-slate-700">
+          Longitude
+          <input
+            className={inputClass}
+            type="number"
+            step="any"
+            min={-180}
+            max={180}
+            value={parameters.longitude}
+            onChange={(event) =>
+              onChange({
+                ...parameters,
+                longitude: Number(event.target.value),
+              })
+            }
+          />
+        </label>
+
+        <label className="text-sm font-semibold text-slate-700 sm:col-span-2">
+          Pincode
+          <input
+            className={inputClass}
+            inputMode="numeric"
+            value={parameters.pincode ?? ""}
+            placeholder="Optional"
+            onChange={(event) =>
+              onChange({
+                ...parameters,
+                pincode: event.target.value,
+              })
+            }
+          />
+        </label>
+
+        <label className="text-sm font-semibold text-slate-700 sm:col-span-2">
+          Platforms — one per line
+          <textarea
+            className={`${inputClass} min-h-28 resize-y`}
+            value={parameters.platforms.join("\n")}
+            onChange={(event) =>
+              onChange({
+                ...parameters,
+                platforms: event.target.value.split("\n"),
+              })
+            }
+          />
+        </label>
+
+        <label className="text-sm font-semibold text-slate-700 sm:col-span-2">
+          Search keywords — one per line
+          <textarea
+            className={`${inputClass} min-h-48 resize-y`}
+            value={parameters.keywords.join("\n")}
+            onChange={(event) =>
+              onChange({
+                ...parameters,
+                keywords: event.target.value.split("\n"),
+              })
+            }
+          />
+        </label>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5 sm:col-span-2">
+          <p className="max-w-md text-xs leading-5 text-slate-500">
+            Existing deals are checked first. Provider outages retain existing
+            deals; only confirmed inactive or expired deals are deleted.
+          </p>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onRun}
+            className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-yellow-300 shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {disabled ? "Processing..." : `Run ${title}`}
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function JobsPage() {
-  const [currentData, setCurrentData] =
-    useState<CurrentResponse | null>(null);
+  const [currentData, setCurrentData] = useState<CurrentResponse | null>(null);
 
   const [history, setHistory] = useState<JobRun[]>([]);
+  const [dailyParameters, setDailyParameters] = useState<JobParameters | null>(
+    null,
+  );
+  const [groceryParameters, setGroceryParameters] =
+    useState<JobParameters | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState("");
 
   const load = useCallback(async () => {
     try {
-      const [currentResponse, historyResponse] = await Promise.all([
-        fetch("/api/admin/jobs/current", {
-          cache: "no-store",
-        }),
-        fetch("/api/admin/jobs/history", {
-          cache: "no-store",
-        }),
-      ]);
+      const [currentResponse, historyResponse, defaultsResponse] =
+        await Promise.all([
+          fetch("/api/admin/jobs/current", {
+            cache: "no-store",
+          }),
+          fetch("/api/admin/jobs/history", {
+            cache: "no-store",
+          }),
+          fetch("/api/admin/jobs/run", {
+            cache: "no-store",
+          }),
+        ]);
 
-      if (!currentResponse.ok || !historyResponse.ok) {
+      if (!currentResponse.ok || !historyResponse.ok || !defaultsResponse.ok) {
         throw new Error("Unable to load job monitor.");
       }
 
-      setCurrentData(
-        (await currentResponse.json()) as CurrentResponse,
-      );
+      setCurrentData((await currentResponse.json()) as CurrentResponse);
 
       setHistory((await historyResponse.json()) as JobRun[]);
+      const defaults = (await defaultsResponse.json()) as DefaultsResponse;
+      setDailyParameters((current) => current ?? defaults.daily);
+      setGroceryParameters((current) => current ?? defaults.grocery);
       setMessage("");
     } catch (loadError) {
       setMessage(
@@ -147,13 +339,31 @@ export default function JobsPage() {
     return () => window.clearInterval(timer);
   }, [load]);
 
-  async function runJob(endpoint: string) {
+  async function runJob(
+    jobType: "quickcommerce-import" | "grocery-import",
+    parameters: JobParameters,
+  ) {
     setActionLoading(true);
     setMessage("");
 
     try {
-      const response = await fetch(endpoint, {
+      const response = await fetch("/api/admin/jobs/run", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          jobType,
+          parameters: {
+            ...parameters,
+            keywords: parameters.keywords
+              .map((item) => item.trim())
+              .filter(Boolean),
+            platforms: parameters.platforms
+              .map((item) => item.trim())
+              .filter(Boolean),
+          },
+        }),
       });
 
       const payload = (await response.json()) as {
@@ -165,9 +375,7 @@ export default function JobsPage() {
 
       if (!response.ok) {
         throw new Error(
-          payload.error ??
-          payload.message ??
-          "Job action failed.",
+          payload.error ?? payload.message ?? "Job action failed.",
         );
       }
 
@@ -189,9 +397,41 @@ export default function JobsPage() {
     }
   }
 
+  async function retryJob() {
+    setActionLoading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/admin/jobs/retry", {
+        method: "POST",
+      });
+      const payload = (await response.json()) as {
+        jobId?: string;
+        error?: string;
+        message?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? payload.message ?? "Retry failed.");
+      }
+
+      setMessage(
+        payload.jobId
+          ? `Job retried: ${payload.jobId}`
+          : "Job retry completed.",
+      );
+      await load();
+    } catch (retryError) {
+      setMessage(
+        retryError instanceof Error ? retryError.message : "Retry failed.",
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   const current = currentData?.current ?? null;
-  const canRetry =
-    current?.status === "failed" && !currentData?.lock.locked;
+  const canRetry = current?.status === "failed" && !currentData?.lock.locked;
 
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-8">
@@ -202,21 +442,8 @@ export default function JobsPage() {
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
-              disabled={
-                actionLoading ||
-                loading ||
-                Boolean(currentData?.lock.locked)
-              }
-              onClick={() => void runJob("/api/admin/jobs/run")}
-              className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {actionLoading ? "Processing..." : "Run Import"}
-            </button>
-
-            <button
-              type="button"
               disabled={actionLoading || loading || !canRetry}
-              onClick={() => void runJob("/api/admin/jobs/retry")}
+              onClick={() => void retryJob()}
               className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Retry Failed
@@ -231,6 +458,33 @@ export default function JobsPage() {
         </div>
       )}
 
+      {dailyParameters && groceryParameters && (
+        <section className="grid gap-6 xl:grid-cols-2">
+          <ParameterCard
+            title="Daily Deals"
+            description="Discover and import general deals on demand."
+            parameters={dailyParameters}
+            grocery={false}
+            disabled={
+              actionLoading || loading || Boolean(currentData?.lock.locked)
+            }
+            onChange={setDailyParameters}
+            onRun={() => void runJob("quickcommerce-import", dailyParameters)}
+          />
+          <ParameterCard
+            title="Grocery Deals"
+            description="Discover genuine grocery deals on demand."
+            parameters={groceryParameters}
+            grocery
+            disabled={
+              actionLoading || loading || Boolean(currentData?.lock.locked)
+            }
+            onChange={setGroceryParameters}
+            onRun={() => void runJob("grocery-import", groceryParameters)}
+          />
+        </section>
+      )}
+
       <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
           <h2 className="text-base font-semibold text-slate-900">
@@ -240,9 +494,7 @@ export default function JobsPage() {
 
         <div className="p-6">
           {loading ? (
-            <div className="text-sm text-slate-500">
-              Loading current job...
-            </div>
+            <div className="text-sm text-slate-500">Loading current job...</div>
           ) : current ? (
             <div className="space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
@@ -273,45 +525,24 @@ export default function JobsPage() {
                   <div
                     className="h-full rounded-full bg-blue-600 transition-all"
                     style={{
-                      width: `${Math.min(
-                        Math.max(current.progress, 0),
-                        100,
-                      )}%`,
+                      width: `${Math.min(Math.max(current.progress, 0), 100)}%`,
                     }}
                   />
                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <Metric
-                  title="Total"
-                  value={current.total}
-                />
+                <Metric title="Total" value={current.total} />
 
-                <Metric
-                  title="Imported"
-                  value={current.imported}
-                />
+                <Metric title="Imported" value={current.imported} />
 
-                <Metric
-                  title="Updated"
-                  value={current.updated}
-                />
+                <Metric title="Updated" value={current.updated} />
 
-                <Metric
-                  title="Skipped"
-                  value={current.skipped}
-                />
+                <Metric title="Skipped" value={current.skipped} />
 
-                <Metric
-                  title="Failed"
-                  value={current.failed}
-                />
+                <Metric title="Failed" value={current.failed} />
 
-                <Metric
-                  title="Started"
-                  value={formatDate(current.startedAt)}
-                />
+                <Metric title="Started" value={formatDate(current.startedAt)} />
 
                 <Metric
                   title="Completed"
@@ -329,6 +560,65 @@ export default function JobsPage() {
                   {current.error ?? current.message}
                 </div>
               )}
+
+              <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-xl">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-5 py-4">
+                  <div>
+                    <h3 className="font-bold text-yellow-300">
+                      Live Processing Details
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Automatically refreshes every five seconds · newest event
+                      first
+                    </p>
+                  </div>
+                  {current.status === "running" && (
+                    <span className="flex items-center gap-2 rounded-full bg-amber-400/10 px-3 py-1.5 text-xs font-bold text-amber-300">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-amber-300" />
+                      Processing
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  className="max-h-[460px] overflow-y-auto p-4 font-mono text-xs"
+                  aria-live="polite"
+                  aria-label="Live job processing details"
+                >
+                  {current.events?.length ? (
+                    <div className="space-y-2">
+                      {[...current.events].reverse().map((event, index) => (
+                        <div
+                          key={`${event.timestamp}-${index}`}
+                          className="grid gap-2 rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3 sm:grid-cols-[86px_90px_1fr]"
+                        >
+                          <time className="text-slate-500">
+                            {new Date(event.timestamp).toLocaleTimeString()}
+                          </time>
+                          <span
+                            className={`w-fit rounded-md px-2 py-0.5 font-bold uppercase tracking-wide ${
+                              event.stage === "error"
+                                ? "bg-red-400/10 text-red-300"
+                                : event.stage === "complete"
+                                  ? "bg-emerald-400/10 text-emerald-300"
+                                  : "bg-yellow-300/10 text-yellow-300"
+                            }`}
+                          >
+                            {event.stage}
+                          </span>
+                          <span className="break-words leading-5 text-slate-200">
+                            {event.message}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="px-2 py-8 text-center text-slate-500">
+                      Detailed events will appear when the next job starts.
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
@@ -411,9 +701,7 @@ export default function JobsPage() {
                         {job.skipped}
                       </td>
 
-                      <td className="px-3 py-4 text-slate-600">
-                        {job.failed}
-                      </td>
+                      <td className="px-3 py-4 text-slate-600">{job.failed}</td>
                     </tr>
                   ))}
                 </tbody>
