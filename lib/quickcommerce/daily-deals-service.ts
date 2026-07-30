@@ -38,6 +38,8 @@ export interface QuickCommerceDailyResult {
   importErrors: string[];
   checked: number;
   validationSkipped: number;
+  unsupportedPlatforms: string[];
+  unsupportedSearchesSkipped: number;
   deleted: number;
   retainedOnError: number;
   providerFailures: string[];
@@ -79,6 +81,10 @@ function isCreditFailure(error: unknown): boolean {
   return /\b(?:credit|credits|quota|balance|payment required|rate limit)\b/i.test(
     message,
   );
+}
+
+function isUnsupportedPlatformError(error: unknown): boolean {
+  return error instanceof QuickCommerceHttpError && error.status === 422;
 }
 
 function discount(product: QuickCommerceProduct): number {
@@ -514,9 +520,17 @@ export class QuickCommerceDailyDealsService {
     const totalSearches = options.keywords.length * options.platforms.length;
     let completedSearches = 0;
     let consecutiveSearchCreditFailures = 0;
+    const unsupportedPlatforms = new Map<string, string>();
+    let unsupportedSearchesSkipped = 0;
 
     searchLoop: for (const keyword of options.keywords) {
       for (const platform of options.platforms) {
+        if (unsupportedPlatforms.has(platformKey(platform))) {
+          unsupportedSearchesSkipped += 1;
+          completedSearches += 1;
+          continue;
+        }
+
         options.onProgress?.({
           stage: "search",
           message: `Searching ${platform} for "${keyword}".`,
@@ -590,12 +604,23 @@ export class QuickCommerceDailyDealsService {
           const failure = `${platform}/${keyword}: ${
             error instanceof Error ? error.message : String(error)
           }`;
-          providerFailures.push(failure);
-          options.onProgress?.({
-            stage: "search",
-            message: `Provider error for ${failure}`,
-          });
-          if (isCreditFailure(error)) {
+
+          if (isUnsupportedPlatformError(error)) {
+            unsupportedPlatforms.set(platformKey(platform), platform);
+            consecutiveSearchCreditFailures = 0;
+            options.onProgress?.({
+              stage: "search",
+              message: `${platform} returned HTTP 422 and is unsupported for this search. It has been disabled for the remainder of this job.`,
+            });
+          } else {
+            providerFailures.push(failure);
+            options.onProgress?.({
+              stage: "search",
+              message: `Provider error for ${failure}`,
+            });
+          }
+
+          if (!isUnsupportedPlatformError(error) && isCreditFailure(error)) {
             consecutiveSearchCreditFailures += 1;
             if (consecutiveSearchCreditFailures >= CREDIT_FAILURE_LIMIT) {
               const stoppedMessage =
@@ -607,7 +632,7 @@ export class QuickCommerceDailyDealsService {
               });
               break searchLoop;
             }
-          } else {
+          } else if (!isUnsupportedPlatformError(error)) {
             consecutiveSearchCreditFailures = 0;
           }
         } finally {
@@ -783,7 +808,7 @@ export class QuickCommerceDailyDealsService {
 
     options.onProgress?.({
       stage: "selection",
-      message: `Selected ${ranked.length} deals from ${candidates.size} eligible candidates. ${rejectedNonGrocery} non-grocery results rejected.`,
+      message: `Selected ${ranked.length} deals from ${candidates.size} eligible candidates. ${rejectedNonGrocery} non-grocery results rejected. ${unsupportedPlatforms.size} unsupported platforms disabled and ${unsupportedSearchesSkipped} repeated searches avoided.`,
       progress: 65,
     });
     options.onProgress?.({
@@ -903,6 +928,8 @@ export class QuickCommerceDailyDealsService {
       importErrors: importResult.errors,
       checked,
       validationSkipped,
+      unsupportedPlatforms: [...unsupportedPlatforms.values()],
+      unsupportedSearchesSkipped,
       deleted,
       retainedOnError,
       providerFailures,
@@ -1075,11 +1102,7 @@ export function quickCommerceGroceryOptionsFromEnvironment(): QuickCommerceDaily
     platforms: split(process.env.GROCERY_PLATFORMS, [
       "BlinkIt",
       "Zepto",
-      "Swiggy Instamart",
-      "Flipkart Minutes",
-      "Amazon Fresh",
       "BigBasket",
-      "JioMart",
     ]),
 
     latitude: Number(
