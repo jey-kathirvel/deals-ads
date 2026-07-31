@@ -13,6 +13,8 @@ export interface Campaign{
   title:string;
   subtitle:string;
   iframeUrl?:string;
+  redirectUrl?:string;
+  redirectLabel?:string;
   imageUrl?:string;
   html?:string;
   enabled:boolean;
@@ -20,6 +22,7 @@ export interface Campaign{
   startDate:string;
   endDate:string;
   showOnce:boolean;
+  delaySeconds:number;
   createdAt:string;
 }
 
@@ -53,7 +56,9 @@ export function activeCampaign(placement:string){
 
     now>=new Date(c.startDate).getTime() &&
 
-    now<=new Date(c.endDate).getTime()
+    now<=new Date(c.endDate).getTime() &&
+
+    (c.type!=="iframe" || Boolean(c.iframeUrl))
 
   ) ?? null;
 
@@ -62,6 +67,24 @@ export function activeCampaign(placement:string){
 export function saveCampaign(data:Partial<Campaign>){
 
   const items=read();
+  const existing=data.id ? items.find(x=>x.id===data.id) : undefined;
+  const iframeUrl=data.iframeUrl?.trim();
+  const redirectUrl=data.redirectUrl?.trim();
+
+  if((data.type??"iframe")==="iframe"){
+    if(!iframeUrl)
+      throw new Error("An iframe URL is required.");
+
+    const url=new URL(iframeUrl);
+    if(url.protocol!=="https:")
+      throw new Error("The iframe URL must use HTTPS.");
+  }
+
+  if(redirectUrl){
+    const url=new URL(redirectUrl);
+    if(url.protocol!=="https:")
+      throw new Error("The redirect URL must use HTTPS.");
+  }
 
   const campaign:Campaign={
 
@@ -77,7 +100,11 @@ export function saveCampaign(data:Partial<Campaign>){
 
     subtitle:data.subtitle??"",
 
-    iframeUrl:data.iframeUrl,
+    iframeUrl,
+
+    redirectUrl,
+
+    redirectLabel:data.redirectLabel?.trim()||"View Deal",
 
     imageUrl:data.imageUrl,
 
@@ -93,7 +120,9 @@ export function saveCampaign(data:Partial<Campaign>){
 
     showOnce:data.showOnce??true,
 
-    createdAt:data.createdAt??new Date().toISOString()
+    delaySeconds:Math.min(300,Math.max(0,Number(data.delaySeconds??5))),
+
+    createdAt:existing?.createdAt??data.createdAt??new Date().toISOString()
 
   };
 

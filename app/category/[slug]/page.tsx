@@ -21,6 +21,29 @@ type CategoryPageProps = {
 
 const SITE_URL = "https://deals.ads-ai.in";
 
+const CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  grocery:
+    "Find today's grocery deals and quick-commerce offers on food, household essentials and daily needs from Blinkit, Zepto and BigBasket.",
+  electronics:
+    "Compare today's electronics deals on headphones, laptops, televisions, accessories and gadgets from popular online stores in India.",
+  mobiles:
+    "Discover mobile phone deals, smartphone discounts and limited-time offers from leading online retailers in India.",
+  fashion:
+    "Browse fashion deals, clothing offers, footwear discounts and accessories from popular Indian shopping platforms.",
+  beauty:
+    "Explore beauty deals, skincare offers, makeup discounts and personal-care savings from trusted online stores.",
+  home: "Find home and kitchen deals, appliance offers and household-product discounts available online in India.",
+  "other-deals":
+    "Explore more online deals, limited-time discounts and useful offers across popular shopping categories in India.",
+};
+
+function categoryDescription(categoryName: string, slug: string): string {
+  return (
+    CATEGORY_DESCRIPTIONS[slug] ??
+    `Explore today's ${categoryName.toLowerCase()} deals, discounts and curated offers from popular online stores in India.`
+  );
+}
+
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -55,12 +78,10 @@ export async function generateMetadata({
   }
 
   const canonicalUrl = `${SITE_URL}/category/${slug}`;
-  const description =
-    `Explore the latest ${categoryName} offers, discounts and curated ` +
-    "shopping deals from popular online stores in India.";
+  const description = categoryDescription(categoryName, slug);
 
   return {
-    title: `${categoryName} Deals & Offers | Deals.ai`,
+    title: `Best ${categoryName} Deals & Offers Online in India`,
     description,
     alternates: {
       canonical: canonicalUrl,
@@ -68,7 +89,7 @@ export async function generateMetadata({
     openGraph: {
       type: "website",
       siteName: "Deals.ai",
-      title: `${categoryName} Deals & Offers`,
+      title: `Best ${categoryName} Deals & Offers Online in India`,
       description,
       url: canonicalUrl,
     },
@@ -130,7 +151,18 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     "@type": "CollectionPage",
     name: `${categoryName} Deals`,
     url: `${SITE_URL}/category/${slug}`,
+    description: categoryDescription(categoryName, slug),
     numberOfItems: categoryDeals.length,
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: categoryDeals.length,
+      itemListElement: categoryDeals.slice(0, 50).map((deal, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: deal.title,
+        url: `${SITE_URL}/deal/${slugify(deal.title)}`,
+      })),
+    },
   };
 
   return (
@@ -174,8 +206,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         <p className={styles.eyebrow}>CURATED CATEGORY</p>
         <h1>{categoryName} Deals</h1>
         <p className={styles.description}>
-          Explore selected {categoryName.toLowerCase()} offers with clear
-          prices, discounts and retailer information.
+          {categoryDescription(categoryName, slug)}
         </p>
 
         <div className={styles.summary}>

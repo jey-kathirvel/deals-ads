@@ -2,11 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import {
-  getDealBySlug,
-  getDealSlug,
-  getRelatedDeals,
-} from "@/lib/deals-store";
+import { getDealBySlug, getDealSlug, getRelatedDeals } from "@/lib/deals-store";
 import { withAmazonAssociateTag } from "@/lib/amazon-affiliate-url";
 
 import styles from "./deal-page.module.css";
@@ -29,17 +25,19 @@ export async function generateMetadata({
     };
   }
 
-  const discount = Math.max(
-    0,
-    Math.round((1 - deal.price / deal.mrp) * 100),
-  );
+  const discount = Math.max(0, Math.round((1 - deal.price / deal.mrp) * 100));
 
   const description =
     `${deal.title} for ₹${deal.price.toLocaleString("en-IN")} ` +
-    `on ${deal.platform}. Save ${discount}% compared with the listed MRP.`;
+    `on ${deal.platform}. Save ${discount}% compared with the listed MRP. Check today's price and availability.`;
+
+  const conciseTitle =
+    deal.title.length > 52
+      ? `${deal.title.slice(0, 49).trimEnd()}…`
+      : deal.title;
 
   return {
-    title: `${deal.title} Deal | Deals.ai`,
+    title: `${conciseTitle} Deal at ₹${deal.price.toLocaleString("en-IN")}`,
     description,
     alternates: {
       canonical: `/deal/${getDealSlug(deal)}`,
@@ -65,6 +63,15 @@ export async function generateMetadata({
       description,
       images: deal.imageUrl ? [deal.imageUrl] : undefined,
     },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+      },
+    },
   };
 }
 
@@ -78,10 +85,7 @@ export default async function DealPage({ params }: PageProps) {
 
   const relatedDeals = await getRelatedDeals(deal, 4);
 
-  const discount = Math.max(
-    0,
-    Math.round((1 - deal.price / deal.mrp) * 100),
-  );
+  const discount = Math.max(0, Math.round((1 - deal.price / deal.mrp) * 100));
 
   const savings = Math.max(0, deal.mrp - deal.price);
   const dealPath = `/deal/${getDealSlug(deal)}`;
@@ -117,6 +121,8 @@ export default async function DealPage({ params }: PageProps) {
     "@context": "https://schema.org",
     "@type": "Product",
     name: deal.title,
+    sku: deal.providerItemId || String(deal.id),
+    category: deal.category,
     image: deal.imageUrl ? [deal.imageUrl] : undefined,
     description:
       `${deal.title} available on ${deal.platform} for ` +
@@ -131,6 +137,7 @@ export default async function DealPage({ params }: PageProps) {
       priceCurrency: "INR",
       price: deal.price,
       availability: "https://schema.org/InStock",
+      itemCondition: "https://schema.org/NewCondition",
       seller: {
         "@type": "Organization",
         name: deal.platform,
@@ -166,10 +173,7 @@ export default async function DealPage({ params }: PageProps) {
       />
 
       <div className={styles.container}>
-        <nav
-          className={styles.breadcrumb}
-          aria-label="Breadcrumb"
-        >
+        <nav className={styles.breadcrumb} aria-label="Breadcrumb">
           <Link href="/">Home</Link>
           <span>/</span>
           <Link href="/">Deals</Link>
@@ -226,8 +230,8 @@ export default async function DealPage({ params }: PageProps) {
             </div>
 
             <p className={styles.notice}>
-              Price and availability may change on the retailer website.
-              Confirm the final price before completing your purchase.
+              Price and availability may change on the retailer website. Confirm
+              the final price before completing your purchase.
             </p>
 
             <a

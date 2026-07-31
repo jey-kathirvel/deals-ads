@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import {
-  getDealCategories,
-  getDealsByCategory,
-} from "@/lib/catalog";
+import { getDealCategories, getDealsByCategory } from "@/lib/catalog";
 import { getPublishedDeals } from "@/lib/deals-store";
 
 import styles from "./categories-page.module.css";
@@ -12,16 +9,16 @@ import styles from "./categories-page.module.css";
 const SITE_URL = "https://deals.ads-ai.in";
 
 export const metadata: Metadata = {
-  title: "Deal Categories | Deals.ai",
+  title: "Online Deal Categories in India",
   description:
-    "Browse curated shopping deals by category across popular online stores in India.",
+    "Browse today's online deals by category, including grocery, electronics, mobiles, fashion, beauty and home offers in India.",
   alternates: {
     canonical: `${SITE_URL}/categories`,
   },
   openGraph: {
     type: "website",
     siteName: "Deals.ai",
-    title: "Browse Deal Categories",
+    title: "Browse Online Deal Categories in India",
     description:
       "Discover electronics, fashion, home, beauty and other shopping deals by category.",
     url: `${SITE_URL}/categories`,
@@ -29,8 +26,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Browse Deal Categories",
-    description:
-      "Discover curated shopping offers organised by category.",
+    description: "Discover curated shopping offers organised by category.",
   },
 };
 
@@ -147,10 +143,7 @@ export default async function CategoriesPage() {
         {categories.length > 0 ? (
           <div className={styles.grid}>
             {categories.map((category, index) => {
-              const categoryDeals = getDealsByCategory(
-                deals,
-                category.slug,
-              );
+              const categoryDeals = getDealsByCategory(deals, category.slug);
 
               const exampleTitles = categoryDeals
                 .slice(0, 3)
