@@ -31,6 +31,8 @@ type CurrentResponse = {
     locked: boolean;
     jobId: string | null;
     lockedAt: string | null;
+    heartbeatAt?: string | null;
+    stopRequestedAt?: string | null;
   };
   current: JobRun | null;
 };
@@ -509,6 +511,38 @@ export default function JobsPage() {
     }
   }
 
+  async function stopJob() {
+    const jobId = currentData?.lock.jobId ?? currentData?.current?.id;
+    if (!jobId) return;
+
+    const confirmed = window.confirm(
+      "Stop the currently running deals job? Imported changes already completed will remain saved.",
+    );
+    if (!confirmed) return;
+
+    setActionLoading(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/jobs/stop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId }),
+      });
+      const payload = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        throw new Error(payload.message ?? "Unable to stop the job.");
+      }
+      setMessage(payload.message ?? "Stop requested.");
+      await load();
+    } catch (stopError) {
+      setMessage(
+        stopError instanceof Error ? stopError.message : "Unable to stop the job.",
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   async function retryJob() {
     setActionLoading(true);
     setMessage("");
@@ -552,6 +586,18 @@ export default function JobsPage() {
         subtitle="Run, inspect and retry deal import jobs"
         actions={
           <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              disabled={
+                loading ||
+                !currentData?.lock.locked ||
+                current?.status !== "running"
+              }
+              onClick={() => void stopJob()}
+              className="rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {currentData?.lock.stopRequestedAt ? "Stopping Job..." : "Manual STOP JOB"}
+            </button>
             <button
               type="button"
               disabled={actionLoading || loading || !canRetry}

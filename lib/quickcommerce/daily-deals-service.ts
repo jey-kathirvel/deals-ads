@@ -23,6 +23,10 @@ export interface QuickCommerceDailyOptions {
   pincode?: string;
   categoryScope?: string;
   cleanupScope?: "all" | "grocery";
+  signal?: AbortSignal;
+  assertNotCancelled?: () => void;
+  maxSearches?: number;
+  maxValidations?: number;
   onProgress?: (event: {
     stage: "search" | "selection" | "import" | "validation" | "cleanup";
     message: string;
@@ -507,6 +511,17 @@ export class QuickCommerceDailyDealsService {
   async run(
     options: QuickCommerceDailyOptions,
   ): Promise<QuickCommerceDailyResult> {
+    const checkCancelled = () => {
+      options.assertNotCancelled?.();
+      if (options.signal?.aborted) {
+        throw options.signal.reason instanceof Error
+          ? options.signal.reason
+          : new Error("Job cancelled.");
+      }
+    };
+
+    checkCancelled();
+
     const candidates = new Map<
       string,
       {
@@ -517,7 +532,11 @@ export class QuickCommerceDailyDealsService {
     >();
     const providerFailures: string[] = [];
     let rejectedNonGrocery = 0;
-    const totalSearches = options.keywords.length * options.platforms.length;
+    const configuredSearches = options.keywords.length * options.platforms.length;
+    const totalSearches = Math.min(
+      configuredSearches,
+      Math.max(1, options.maxSearches ?? configuredSearches),
+    );
     let completedSearches = 0;
     let consecutiveSearchCreditFailures = 0;
     const unsupportedPlatforms = new Map<string, string>();
@@ -525,6 +544,8 @@ export class QuickCommerceDailyDealsService {
 
     searchLoop: for (const keyword of options.keywords) {
       for (const platform of options.platforms) {
+        checkCancelled();
+        if (completedSearches >= totalSearches) break searchLoop;
         if (unsupportedPlatforms.has(platformKey(platform))) {
           unsupportedSearchesSkipped += 1;
           completedSearches += 1;
@@ -546,6 +567,7 @@ export class QuickCommerceDailyDealsService {
             latitude: options.latitude,
             longitude: options.longitude,
             pincode: options.pincode,
+            signal: options.signal,
           });
           consecutiveSearchCreditFailures = 0;
           for (const product of products) {
@@ -658,9 +680,9 @@ export class QuickCommerceDailyDealsService {
         platformKey(deal.providerPlatform?.trim() || deal.platform),
       ),
     );
-    const validationDeals = selectedPlatformDeals.filter(
-      (deal) => !isFreshlyValidated(deal, now),
-    );
+    const validationDeals = selectedPlatformDeals
+      .filter((deal) => !isFreshlyValidated(deal, now))
+      .slice(0, Math.max(0, options.maxValidations ?? selectedPlatformDeals.length));
     const validationSkipped =
       selectedPlatformDeals.length - validationDeals.length;
 
@@ -841,6 +863,7 @@ export class QuickCommerceDailyDealsService {
       progress: 80,
     });
     for (const deal of validationDeals) {
+      checkCancelled();
       const identity = validationIdentity(deal);
       if (!identity) continue;
       checked += 1;
@@ -947,98 +970,21 @@ export function quickCommerceOptionsFromEnvironment(): QuickCommerceDailyOptions
     ),
 
     keywords: Array.from(
-      new Set([
-        ...split(process.env.QUICKCOMMERCE_KEYWORDS, []),
-
-        // Existing/default searches
-        "headphones",
-        "smart watches",
-        "kitchen appliances",
-        "fashion",
-
-        // Grocery and daily essentials
-        "grocery",
-        "milk",
-        "curd",
-        "paneer",
-        "cheese",
-        "butter",
-        "atta",
-        "wheat flour",
-        "rice",
-        "dal",
-        "cooking oil",
-        "ghee",
-        "salt",
-        "sugar",
-        "tea",
-        "coffee",
-        "biscuits",
-        "cookies",
-        "chips",
-        "snacks",
-        "fruit",
-        "vegetables",
-        "juice",
-        "soft drinks",
-        "detergent",
-        "soap",
-        "shampoo",
-        "toothpaste",
-
-        // Mobile phones
-        "mobile",
-        "mobiles",
-        "mobile phone",
-        "smartphone",
-        "smartphones",
-        "iphone",
-        "android phone",
-        "samsung galaxy",
-        "oneplus mobile",
-        "realme mobile",
-        "redmi mobile",
-        "vivo mobile",
-        "oppo mobile",
-        "poco mobile",
-
-        // Televisions
-        "tv",
-        "television",
-        "smart tv",
-        "android tv",
-        "google tv",
-        "led tv",
-        "qled tv",
-        "oled tv",
-        "4k tv",
-
-        // Computers and laptops
-        "laptop",
-        "laptops",
-        "gaming laptop",
-        "business laptop",
-        "ultrabook",
-        "notebook computer",
-        "desktop computer",
-        "computer",
-        "monitor",
-        "gaming monitor",
-
-        // Computer and mobile accessories
-        "keyboard",
-        "computer mouse",
-        "webcam",
-        "printer",
-        "ssd",
-        "external hard disk",
-        "power bank",
-        "mobile charger",
-        "earbuds",
-        "bluetooth speaker",
-        "wifi router",
-      ]),
+      new Set(
+        split(process.env.QUICKCOMMERCE_KEYWORDS, [
+          "headphones",
+          "smart watches",
+          "smartphone",
+          "smart tv",
+          "laptop",
+          "kitchen appliances",
+          "fashion",
+          "power bank",
+        ]),
+      ),
     ),
+    maxSearches: Number(process.env.QUICKCOMMERCE_MAX_SEARCHES ?? "40"),
+    maxValidations: Number(process.env.QUICKCOMMERCE_MAX_VALIDATIONS ?? "150"),
 
     platforms: split(process.env.QUICKCOMMERCE_PLATFORMS, [
       "Amazon",
@@ -1098,6 +1044,9 @@ export function quickCommerceGroceryOptionsFromEnvironment(): QuickCommerceDaily
         ]),
       ),
     ),
+
+    maxSearches: Number(process.env.GROCERY_MAX_SEARCHES ?? "30"),
+    maxValidations: Number(process.env.GROCERY_MAX_VALIDATIONS ?? "100"),
 
     platforms: split(process.env.GROCERY_PLATFORMS, [
       "BlinkIt",
