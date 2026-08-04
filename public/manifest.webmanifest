@@ -1,0 +1,20 @@
+{
+  "name": "Deals.ai - Smart Deals India",
+  "short_name": "Deals.ai",
+  "description": "Discover and compare fresh online deals across popular Indian stores.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#061126",
+  "theme_color": "#07152f",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

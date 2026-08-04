@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "./glass-theme.css";
 import DealsCampaignTrigger from "./components/campaign/DealsCampaignTrigger";
+import PwaInstall from "./components/pwa-install";
 
 const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });
 const mono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"] });
@@ -44,7 +46,17 @@ export const metadata: Metadata = {
     description:
       "Compare fresh deals, prices and discounts across popular Indian online stores.",
   },
-  icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Deals.ai",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 const websiteStructuredData = {
@@ -92,6 +104,7 @@ export default function RootLayout({
         />
         {children}
         <DealsCampaignTrigger />
+        <PwaInstall />
       </body>
     </html>
   );

@@ -29,10 +29,11 @@ test("server-renders the Deals product", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>Deals — AI-assisted deal discovery for India<\/title>/i);
+  assert.match(html, /Best Online Deals &amp; Offers in India \| Deals\.ai/i);
+  assert.match(html, /manifest\.webmanifest/);
   assert.match(html, /Smarter finds/);
   assert.match(html, /Brighter savings/);
-  assert.match(html, /SHOP BY CATEGORY/);
+  assert.match(html, /Shop by category/i);
   assert.match(html, /Prices may change at the retailer/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape/i);
 });
@@ -45,7 +46,7 @@ test("keeps the production page connected to durable deals", async () => {
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /await getDeals\(\)/);
+  assert.match(page, /await getPublishedDeals\(\)/);
   assert.match(page, /<DealsApp/);
   assert.match(layout, /Deals/);
   assert.match(store, /getLegacyDeals/);
