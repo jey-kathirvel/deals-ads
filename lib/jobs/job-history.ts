@@ -111,6 +111,44 @@ export function finishRun(
   });
 }
 
+export function getRun(id: string) {
+  return read().find((job) => job.id === id) ?? null;
+}
+
+export function cancelRun(id: string, message: string) {
+  appendRunEvent(id, "cancelled", message);
+  finishRun(id, "cancelled", { error: message, message });
+}
+
+export function recoverOrphanedRunningJobs(staleBefore: number) {
+  const jobs = read();
+  let changed = false;
+  const now = new Date();
+  for (const job of jobs) {
+    if (job.status !== "running") continue;
+    const lastEventAt = job.events?.at(-1)?.timestamp ?? job.startedAt;
+    const lastActivity = lastEventAt ? Date.parse(lastEventAt) : Number.NaN;
+    if (!Number.isFinite(lastActivity) || lastActivity > staleBefore) continue;
+    job.status = "failed";
+    job.completedAt = now.toISOString();
+    job.durationMs = job.startedAt
+      ? now.getTime() - new Date(job.startedAt).getTime()
+      : undefined;
+    job.error = "Job interrupted by an application or container restart.";
+    job.events = [
+      ...(job.events ?? []),
+      {
+        timestamp: now.toISOString(),
+        stage: "error" as const,
+        message: "Orphaned running job recovered automatically after application restart.",
+      },
+    ].slice(-300);
+    changed = true;
+  }
+  if (changed) write(jobs);
+  return changed;
+}
+
 export function latestRun() {
   return read()[0] ?? null;
 }

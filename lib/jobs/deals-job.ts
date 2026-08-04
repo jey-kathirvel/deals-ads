@@ -5,9 +5,15 @@ import {
   quickCommerceOptionsFromEnvironment,
 } from "@/lib/quickcommerce";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { acquireLock, releaseLock } from "./job-lock";
-import { appendRunEvent, createRun, finishRun, updateRun } from "./job-history";
+import { acquireLock, heartbeatLock, releaseLock } from "./job-lock";
+import { appendRunEvent, cancelRun, createRun, finishRun, updateRun } from "./job-history";
 import type { JobType } from "./job-types";
+import {
+  JobCancelledError,
+  registerJobController,
+  throwIfJobStopRequested,
+  unregisterJobController,
+} from "./job-control";
 
 export interface ManualDealsJobParameters {
   limit: number;
@@ -37,6 +43,8 @@ async function executeProviderImport(
   ) => void,
   mode: "general" | "grocery" = "general",
   parameters?: ManualDealsJobParameters,
+  signal?: AbortSignal,
+  assertNotCancelled?: () => void,
 ): Promise<ProviderImportResult> {
   const apiKey = process.env.QUICKCOMMERCE_API_KEY?.trim();
 
@@ -67,6 +75,8 @@ async function executeProviderImport(
       mode === "grocery" ? "Grocery" : environmentOptions.categoryScope,
     cleanupScope:
       mode === "grocery" ? "grocery" : environmentOptions.cleanupScope,
+    signal,
+    assertNotCancelled,
     onProgress: ({ stage, message, progress: eventProgress }) =>
       event(stage, message, eventProgress),
   });
@@ -102,6 +112,11 @@ export async function runDealsJob(
   const run = createRun(type, triggeredBy);
 
   acquireLock(run.id);
+  const controller = registerJobController(run.id);
+  const assertNotCancelled = () => {
+    heartbeatLock(run.id);
+    throwIfJobStopRequested(run.id, controller.signal);
+  };
 
   try {
     if (
@@ -114,12 +129,14 @@ export async function runDealsJob(
 
     const result = await executeProviderImport(
       (current, total) => {
+        assertNotCancelled();
         updateRun(run.id, {
           progress: current,
           total,
         });
       },
       (stage, message, current) => {
+        assertNotCancelled();
         appendRunEvent(run.id, stage, message);
         if (typeof current === "number") {
           updateRun(run.id, {
@@ -130,6 +147,8 @@ export async function runDealsJob(
       },
       type === "grocery-import" ? "grocery" : "general",
       parameters,
+      controller.signal,
+      assertNotCancelled,
     );
 
     finishRun(run.id, result.failed > 0 ? "partial_success" : "success", {
@@ -153,6 +172,15 @@ export async function runDealsJob(
 
     return run.id;
   } catch (error) {
+    if (
+      error instanceof JobCancelledError ||
+      controller.signal.aborted ||
+      (error instanceof Error && error.name === "AbortError")
+    ) {
+      cancelRun(run.id, "Job stopped manually by an administrator.");
+      return run.id;
+    }
+
     appendRunEvent(
       run.id,
       "error",
@@ -164,7 +192,8 @@ export async function runDealsJob(
 
     throw error;
   } finally {
-    releaseLock();
+    unregisterJobController(run.id);
+    releaseLock(run.id);
   }
 }
 
