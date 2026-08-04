@@ -23,7 +23,8 @@ export interface JobEvent {
     | "validation"
     | "cleanup"
     | "complete"
-    | "error";
+    | "error"
+    | "cancelled";
   message: string;
 }
 
@@ -56,4 +57,7 @@ export interface JobLock {
   locked: boolean;
   jobId: string | null;
   lockedAt: string | null;
+  heartbeatAt?: string | null;
+  processId?: number | null;
+  stopRequestedAt?: string | null;
 }
