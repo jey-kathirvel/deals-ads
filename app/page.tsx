@@ -1,5 +1,5 @@
 import DealsApp from "./deals-app";
-import { getDeals } from "@/lib/deals-store";
+import { getPublishedDeals } from "@/lib/deals-store";
 
 import HomeCategoryShowcase from "@/components/home-category-showcase";
 export const dynamic = "force-dynamic";
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   return (
     <>
-      <DealsApp initialDeals={await getDeals()} />
+      <DealsApp initialDeals={await getPublishedDeals()} />
       <HomeCategoryShowcase />
     </>
   );

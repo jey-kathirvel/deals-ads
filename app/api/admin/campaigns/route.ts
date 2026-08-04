@@ -44,9 +44,17 @@ export async function POST(req:Request){
 
 
 
-  return NextResponse.json(
-    saveCampaign(await req.json())
-  );
+  try {
+    return NextResponse.json(saveCampaign(await req.json()));
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Unable to save campaign",
+      },
+      { status: 400 },
+    );
+  }
 
 }
 

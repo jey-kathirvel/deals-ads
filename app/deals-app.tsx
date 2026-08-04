@@ -2132,8 +2132,9 @@ export default function DealsApp({
         </p>
         <div>
           <a href="#about">About</a>
-          <a href="#">Privacy</a>
-          <a href="#">Terms</a>
+          <a href="/editorial-policy">How we select deals</a>
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
           <a href="#contact">Contact</a>
         </div>
         <small>© 2026 deals.ads-ai.in</small>

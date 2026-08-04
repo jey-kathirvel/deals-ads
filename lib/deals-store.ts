@@ -239,16 +239,16 @@ export function getDealSlug(deal: Pick<Deal, "title">): string {
 }
 
 export async function getDealBySlug(slug: string): Promise<Deal | null> {
-  const deals = await getLegacyDeals();
+  const deals = await getPublishedDeals();
 
   return deals.find((d) => getDealSlug(d) === slug) ?? null;
 }
 
 export async function getRelatedDeals(deal: Deal, limit = 4): Promise<Deal[]> {
-  const deals = await getLegacyDeals();
+  const deals = await getPublishedDeals();
 
   return deals
-    .filter((d) => d.id !== deal.id && d.category === deal.category && d.active)
+    .filter((d) => d.id !== deal.id && d.category === deal.category)
     .slice(0, limit);
 }
 

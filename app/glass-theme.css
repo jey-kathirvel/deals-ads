@@ -1,0 +1,163 @@
+/* Deals.ai blue glass experience */
+:root {
+  --glass-bg: rgba(12, 31, 67, 0.68);
+  --glass-bg-light: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(148, 197, 255, 0.2);
+  --glass-shadow: 0 24px 70px rgba(0, 12, 35, 0.34);
+  --blue-950: #040b1d;
+  --blue-900: #061126;
+  --blue-800: #0a1f43;
+  --blue-700: #103463;
+  --blue-500: #2f91ee;
+  --blue-400: #5cb6ff;
+  --cyan-300: #75e6ff;
+  --glass-text: #edf6ff;
+  --glass-muted: #a9bdd7;
+  --glass-radius: 24px;
+  --ink: #eaf4ff;
+  --green: #0b2c5b;
+  --mint: #68dfff;
+  --cream: #091a37;
+  --muted: #a5b8d0;
+  --line: rgba(132, 186, 255, 0.18);
+  --orange: #5cb6ff;
+}
+html { background: var(--blue-950); }
+body {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(35, 133, 255, 0.24), transparent 32rem),
+    radial-gradient(circle at 88% 24%, rgba(55, 221, 255, 0.15), transparent 29rem),
+    linear-gradient(180deg, #07142d 0%, #050d20 58%, #081a35 100%);
+  color: var(--glass-text);
+}
+body::before {
+  position: fixed; inset: 0; z-index: -1; content: ""; pointer-events: none;
+  background-image: linear-gradient(rgba(116,178,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(116,178,255,.035) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: linear-gradient(to bottom, black, transparent 75%);
+}
+.top-strip { background: rgba(3, 10, 27, .86); color: #cfe5ff; border-bottom: 1px solid var(--glass-border); }
+.top-strip span, .top-strip .pulse-dot { color: var(--cyan-300); }
+.site-header {
+  height: 80px; border-bottom: 1px solid var(--glass-border); color: var(--glass-text);
+  background: rgba(5, 17, 42, .72); backdrop-filter: blur(24px) saturate(150%); box-shadow: 0 14px 40px rgba(0, 10, 30, .2);
+}
+.brand { color: #fff; text-shadow: 0 2px 20px rgba(92,182,255,.22); }
+.brand-mark { background: linear-gradient(135deg, #7eeaff, #2e8eed); color: #041329; box-shadow: 0 10px 26px rgba(48,151,245,.34); }
+.brand-dot { color: var(--cyan-300); }
+.search-box, .deals-search-field {
+  border: 1px solid var(--glass-border); background: rgba(255,255,255,.07); color: #fff; box-shadow: inset 0 1px rgba(255,255,255,.08);
+}
+.search-box input, .deals-search-field input { color: #fff; }
+.search-box input::placeholder, .deals-search-field input::placeholder { color: #91a8c4; }
+.search-box kbd { color: #a9c4e4; border-color: rgba(160,205,255,.25); background: rgba(255,255,255,.06); }
+.main-navigation > a, .main-navigation .nav-dropdown > button { color: #c9dcf3; }
+.main-navigation > a:hover, .main-navigation .nav-dropdown > button:hover, .main-navigation .nav-dropdown > button.active { color: #fff; background: rgba(85,174,255,.12); }
+.nav-submenu { border: 1px solid var(--glass-border); background: rgba(6, 20, 48, .95); backdrop-filter: blur(26px); box-shadow: var(--glass-shadow); }
+.nav-submenu a, .nav-submenu button { color: #d9eaff; }
+.nav-submenu a:hover, .nav-submenu button:hover { background: rgba(83,173,255,.12); }
+.saved-button, .header-lightning { border: 1px solid var(--glass-border); background: rgba(255,255,255,.07); color: #dcecff; }
+.saved-button b { background: #45a8ff; color: #031329; }
+.mobile-menu-button span { background: #dff2ff; }
+.hero {
+  min-height: 620px; color: #fff; background: transparent; position: relative;
+}
+.hero::before { position:absolute; inset:30px 3vw; content:""; border:1px solid var(--glass-border); border-radius:36px; background:linear-gradient(135deg,rgba(19,54,107,.66),rgba(6,20,49,.4)); backdrop-filter:blur(14px); box-shadow:var(--glass-shadow); }
+.hero > * { position: relative; z-index: 1; }
+.eyebrow { color: var(--cyan-300); }
+.hero h1, .how h2 { text-shadow: 0 12px 38px rgba(0,0,0,.25); }
+.hero h1 em, .how h2 em { color: #75dfff; background: linear-gradient(90deg,#72dcff,#6a9dff); background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero-copy > p { color: #bed0e6; }
+.primary { color: #041329; background: linear-gradient(135deg,#78e5ff,#4298f4); border-radius: 999px; box-shadow: 0 14px 34px rgba(54,157,246,.3); }
+.text-link, .trust-row, .trust-row b { color: #dcecff; }
+.ai-core { background: linear-gradient(145deg,#63cfff,#316eea); box-shadow: 0 0 65px rgba(64,164,255,.5); }
+.orbit { border-color: rgba(107,207,255,.28); }
+.signal-card { border: 1px solid rgba(149,205,255,.24); background: rgba(12,34,72,.78); color:#eaf5ff; backdrop-filter:blur(18px); box-shadow: 0 18px 50px rgba(0,11,34,.38); }
+.platforms { border-color: var(--glass-border); background: rgba(8,22,48,.46); }
+.platforms > span { color: #8ea8c8; }
+.platforms b { background: rgba(255,255,255,.92); border-radius: 12px; padding: 9px 13px; box-shadow: 0 10px 26px rgba(0,8,24,.22); }
+.ai-grocery-reach { background: transparent; }
+.ai-grocery-reach-link { border:1px solid var(--glass-border); background:linear-gradient(135deg,rgba(20,62,124,.72),rgba(7,26,61,.74)); box-shadow:var(--glass-shadow); backdrop-filter:blur(20px); }
+.ai-grocery-reach h2, .ai-grocery-reach p { color:#eef7ff; }
+.deals-section { background: transparent; }
+.deals-search-panel, .collection-hero, .deal-card, .booking-card, .feedback-card {
+  border: 1px solid var(--glass-border); background: var(--glass-bg-light); backdrop-filter: blur(18px) saturate(135%); box-shadow: 0 16px 44px rgba(0,10,32,.24);
+}
+.deals-search-copy strong, .section-head h2, .deal-content h3 { color: #f2f8ff; }
+.deals-search-copy small, .section-head p { color: var(--glass-muted); }
+.collection-hero { color: #dcecff; }
+.collection-hero::before { opacity: .45; }
+.collection-hero.active { border-color: rgba(108,203,255,.72); background: linear-gradient(145deg,rgba(42,118,215,.36),rgba(20,54,113,.45)); box-shadow: 0 18px 52px rgba(21,102,203,.24), inset 0 1px rgba(255,255,255,.12); }
+.collection-eyebrow, .collection-action { color: #78dfff; }
+.collection-count { background: rgba(81,172,255,.17); color: #bfe9ff; }
+.eyebrow.dark { color: #72cef8; }
+.sort select, .category-tabs button { border:1px solid var(--glass-border); background:rgba(255,255,255,.07); color:#dcecff; }
+.sort select option { color:#10213a; }
+.category-tabs button.active { border-color:#62c7ff; background:linear-gradient(135deg,#2e91ef,#416fe3); color:#fff; box-shadow:0 10px 24px rgba(41,124,234,.25); }
+.deal-grid { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 20px; }
+.deal-card { overflow:hidden; border-radius:24px; }
+.deal-card:hover { transform: translateY(-7px); border-color: rgba(111,198,255,.48); box-shadow:0 28px 70px rgba(0,10,35,.42); }
+.product-visual { background: linear-gradient(145deg,rgba(234,245,255,.96),rgba(205,229,250,.92)) !important; }
+.deal-card .product-image {
+  position: absolute;
+  inset: 52px 28px 18px;
+  width: calc(100% - 56px);
+  height: calc(100% - 70px);
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  object-fit: contain;
+  object-position: center;
+}
+.deal-tag, .heart, .ai-score { backdrop-filter:blur(12px); }
+.deal-tag {
+  border: 1px solid rgba(255, 234, 137, .9);
+  background: linear-gradient(135deg, #ffe87c, #ffb743);
+  color: #15203a;
+  box-shadow: 0 10px 28px rgba(255, 181, 55, .34), inset 0 1px rgba(255, 255, 255, .7);
+  font-weight: 900;
+  letter-spacing: .03em;
+}
+.deal-tag svg { color: #15203a; }
+.heart {
+  border: 1px solid rgba(25, 89, 154, .12);
+  background: rgba(255, 255, 255, .88);
+}
+.ai-score {
+  border: 1px solid rgba(126, 235, 255, .9);
+  border-radius: 9px;
+  padding: 5px 8px;
+  gap: 4px;
+  background: linear-gradient(135deg, #80edff, #4a9cff);
+  color: #04152e;
+  box-shadow: 0 8px 20px rgba(51, 157, 255, .3), inset 0 1px rgba(255, 255, 255, .7);
+}
+.ai-score svg, .ai-score b, .ai-score small { color: #04152e; }
+.ai-score .icon { width: 11px; height: 11px; }
+.ai-score b { font-size: 14px; font-weight: 950; }
+.ai-score small { font-size: 7px; opacity: .78; font-weight: 900; letter-spacing: .05em; }
+.deal-content { background: linear-gradient(180deg,rgba(9,28,61,.95),rgba(6,20,46,.98)); }
+.platform-name { color:#80caff; }.platform-name span { color:#ffd37b; }
+.price-row strong { color:#fff; }.price-row s { color:#7f96b2; }.price-row b { color:#72dcff; background:rgba(71,175,255,.12); border-radius:99px; padding:4px 7px; }
+.auto-deal, .coupon { border:1px solid rgba(100,198,255,.16); background:rgba(73,167,255,.09); color:#bfe7ff; }
+.expiry-pill { color:#9eb6d2; }.get-deal-button { background:linear-gradient(135deg,#59c8ff,#367bea); color:#fff; border-radius:999px; box-shadow:0 10px 24px rgba(43,119,226,.28); }
+.ai-lab, .how { background: linear-gradient(135deg,rgba(11,37,79,.76),rgba(6,21,51,.7)); border-block:1px solid var(--glass-border); }
+.ai-lab h2, .how h2 { color:#fff; }.ai-lab p, .how p { color:#afc3dc; }
+footer { background:rgba(3,11,29,.84); color:#a9bdd7; border-top:1px solid var(--glass-border); }
+footer .brand, footer a { color:#e8f5ff; }
+.pwa-install { position:fixed; left:18px; bottom:18px; z-index:80; display:flex; align-items:center; gap:9px; min-height:46px; padding:10px 16px 10px 10px; border:1px solid rgba(129,208,255,.42); border-radius:999px; color:#fff; background:rgba(9,37,78,.78); backdrop-filter:blur(18px); box-shadow:0 16px 42px rgba(0,8,28,.4); font:800 13px var(--font-geist),sans-serif; cursor:pointer; }
+.pwa-install span { display:grid; width:26px; height:26px; place-items:center; border-radius:50%; background:linear-gradient(135deg,#72ddff,#397de9); color:#031329; font-size:20px; line-height:1; }
+.grocery-only-page { background:radial-gradient(circle at 8% 5%,rgba(49,137,255,.23),transparent 30rem),linear-gradient(180deg,#07142e,#050d20); color:#edf6ff; }
+.grocery-only-top-strip { background:rgba(3,11,29,.9); }.grocery-only-header { border-color:var(--glass-border); background:rgba(6,20,47,.78); backdrop-filter:blur(22px); }
+.grocery-only-heading h1, .grocery-results-heading h2 { color:#f1f8ff; }.grocery-only-heading h1 em { color:#67d7ff; }
+.grocery-only-heading p { color:#adc1da; }.grocery-only-eyebrow { background:rgba(77,176,255,.14); color:#70d8ff; border:1px solid var(--glass-border); }
+.grocery-pincode-card, .grocery-only-toolbar, .grocery-provider-tabs button { border:1px solid var(--glass-border); background:rgba(255,255,255,.07); color:#eaf5ff; backdrop-filter:blur(18px); box-shadow:var(--glass-shadow); }
+.grocery-pincode-form input, .grocery-only-search, .grocery-only-sort select { border-color:var(--glass-border); background:rgba(255,255,255,.08); color:#fff; }.grocery-only-sort select option{color:#10213a}
+.grocery-pincode-form button, .grocery-provider-tabs button.active { background:linear-gradient(135deg,#65d4ff,#3c7ee9); color:#061329; }
+.grocery-home-link { border-color:var(--glass-border); color:#dcecff; }
+.grocery-results-heading span { color:#70d8ff; }.grocery-results-heading small { background:rgba(78,169,255,.13); color:#a8ddff; }
+@media (max-width:1320px){.site-header{grid-template-columns:auto 1fr auto;height:auto;min-height:80px}.site-header .search-box{order:4;grid-column:1/-1;width:100%;max-width:none}.mobile-menu-button{display:block!important}.main-navigation{display:none!important;position:absolute;z-index:1000;top:100%;right:15px;left:15px;max-height:calc(100vh - 110px);align-items:stretch;flex-direction:column;gap:5px;overflow-y:auto;padding:15px;border:1px solid var(--glass-border);border-radius:19px;background:rgba(5,18,44,.97);backdrop-filter:blur(24px);box-shadow:var(--glass-shadow)}.main-navigation.open{display:flex!important}.main-navigation>a,.nav-dropdown>button{width:100%;min-height:46px;justify-content:space-between;padding:0 13px;border-radius:11px;font-size:14px}.nav-submenu{position:static;width:100%;margin-top:5px;padding:11px;box-shadow:none;transform:none}.nav-submenu.open{animation:none}.submenu-heading{padding:6px}.submenu-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:1200px){.deal-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:1050px){.site-header{height:72px}.main-navigation{background:rgba(5,18,44,.97);border:1px solid var(--glass-border);backdrop-filter:blur(24px)}.site-header .search-box{max-width:none}.hero{grid-template-columns:1fr;min-height:auto;padding-block:80px}.ai-orbit{min-height:390px}.deal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:650px){body{background:linear-gradient(180deg,#07142d,#050d20)}.top-strip{font-size:10px}.site-header{padding-inline:14px;gap:10px}.site-header .brand{font-size:22px}.site-header .search-box{display:none}.saved-button span,.header-lightning-copy{display:none}.hero{padding:54px 18px 64px;gap:30px}.hero::before{inset:14px 10px;border-radius:26px}.hero h1{font-size:clamp(43px,14vw,65px)}.hero-copy>p{font-size:15px}.hero-actions{align-items:stretch;flex-direction:column}.primary{text-align:center}.trust-row{gap:10px;flex-wrap:wrap}.ai-orbit{display:none}.platforms{align-items:flex-start;flex-direction:column;padding:22px 16px}.platforms>div{width:100%;justify-content:flex-start;overflow:auto}.deals-section{padding:56px 12px}.deals-search-panel{padding:14px;border-radius:20px}.collection-heroes{scroll-snap-type:x mandatory}.collection-hero{min-width:82vw;scroll-snap-align:center}.section-head{align-items:flex-start;flex-direction:column}.sort{width:100%}.sort select{flex:1}.deal-grid{grid-template-columns:1fr;gap:16px}.deal-card{border-radius:20px}.product-visual{height:220px}.pwa-install{left:12px;bottom:12px}.grocery-only-hero,.grocery-only-catalogue{padding-inline:12px}.grocery-pincode-card,.grocery-only-toolbar{border-radius:20px}.grocery-only-grid{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
