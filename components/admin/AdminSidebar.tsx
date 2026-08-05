@@ -49,6 +49,11 @@ const sections: NavigationSection[] = [
         icon: "A",
       },
       {
+        href: "/admin/url-import",
+        title: "Smart URL Import",
+        icon: "↗",
+      },
+      {
         href: "/admin/manual-deals",
         title: "Manual Deals",
         icon: "+",
