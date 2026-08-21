@@ -594,3 +594,17 @@ footer .brand, footer a { color: var(--navy-900); }
   color: #fff !important;
   background: var(--navy-800);
 }
+
+/* Premium gold offer highlight */
+.deal-card .deal-tag {
+  color: var(--navy-950);
+  border: 1px solid #c59024;
+  background: linear-gradient(135deg, #fff0a8 0%, #e7bd55 48%, #bd8620 100%);
+  box-shadow: 0 9px 23px rgba(163, 112, 17, .24), inset 0 1px rgba(255,255,255,.72);
+  text-shadow: 0 1px rgba(255,255,255,.46);
+}
+.deal-card .deal-tag svg,
+.deal-card .deal-tag .icon {
+  color: var(--navy-950);
+  stroke: currentColor;
+}
