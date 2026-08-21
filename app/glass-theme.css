@@ -568,3 +568,29 @@ footer .brand, footer a { color: var(--navy-900); }
   background: var(--navy-100);
 }
 .grocery-home-link { color: var(--navy-900); border-color: rgba(6, 26, 68, .18); }
+
+/* Primary deal action must retain accessible contrast on navy. */
+.deal-card .get-deal-button,
+.deal-card .get-deal-button:link,
+.deal-card .get-deal-button:visited,
+.grocery-deal-action .get-deal-button {
+  color: #fff !important;
+  background: var(--navy-900);
+}
+.deal-card .get-deal-button span,
+.deal-card .get-deal-button .icon,
+.deal-card .get-deal-button svg,
+.grocery-deal-action .get-deal-button span,
+.grocery-deal-action .get-deal-button .icon,
+.grocery-deal-action .get-deal-button svg {
+  color: #fff !important;
+  fill: none;
+  stroke: currentColor;
+}
+.deal-card .get-deal-button:hover,
+.deal-card .get-deal-button:focus-visible,
+.grocery-deal-action .get-deal-button:hover,
+.grocery-deal-action .get-deal-button:focus-visible {
+  color: #fff !important;
+  background: var(--navy-800);
+}
