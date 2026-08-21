@@ -519,3 +519,52 @@ footer .brand, footer a { color: var(--navy-900); }
   body, .grocery-only-page { background: linear-gradient(180deg, #f8fbff, #edf3fb); }
   .main-navigation { border-color: var(--glass-border); background: rgba(255,255,255,.98); }
 }
+
+/* Grocery light-mode contrast correction */
+.grocery-only-heading h1,
+.grocery-results-heading h2 {
+  color: var(--navy-950);
+  text-shadow: none;
+}
+.grocery-only-heading h1 em { color: var(--navy-700); }
+.grocery-only-heading p { color: #405675; }
+.grocery-only-eyebrow {
+  color: var(--navy-900);
+  border-color: rgba(6, 26, 68, .2);
+  background: rgba(220, 231, 247, .88);
+}
+.grocery-pincode-card strong,
+.grocery-pincode-card small,
+.grocery-pincode-success,
+.grocery-pincode-error { color: var(--navy-900); }
+.grocery-pincode-icon { color: #fff; background: var(--navy-900); }
+.grocery-pincode-form input,
+.grocery-only-search,
+.grocery-only-search input,
+.grocery-only-sort select {
+  color: var(--navy-950);
+  border-color: rgba(6, 26, 68, .18);
+  background: rgba(255,255,255,.96);
+}
+.grocery-pincode-form input::placeholder,
+.grocery-only-search input::placeholder { color: #687b97; opacity: 1; }
+.grocery-only-search button { color: var(--navy-900); }
+.grocery-only-sort label { color: var(--navy-900); }
+.grocery-only-sort select option { color: var(--navy-950); background: #fff; }
+.grocery-provider-tabs button {
+  color: var(--navy-900);
+  border-color: rgba(6, 26, 68, .18);
+  background: rgba(255,255,255,.9);
+}
+.grocery-provider-tabs button:disabled { color: #667995; opacity: .72; }
+.grocery-provider-tabs button.active {
+  color: #fff;
+  border-color: var(--navy-900);
+  background: var(--navy-900);
+}
+.grocery-results-heading span { color: var(--navy-700); }
+.grocery-results-heading small {
+  color: var(--navy-900);
+  background: var(--navy-100);
+}
+.grocery-home-link { color: var(--navy-900); border-color: rgba(6, 26, 68, .18); }
