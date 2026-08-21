@@ -354,3 +354,168 @@ body {
   .ai-lab { margin-inline: 8px; border-radius: 25px; }
   .newsletter, .feedback-section { border-radius: 22px; }
 }
+
+/* Light navy edition — white, ice and navy only */
+:root {
+  --navy-950: #031331;
+  --navy-900: #061a44;
+  --navy-800: #0a285f;
+  --navy-700: #103a7a;
+  --navy-100: #dce7f7;
+  --navy-050: #edf3fb;
+  --ice: #f6f9fe;
+  --glass-bg: rgba(255, 255, 255, .82);
+  --glass-bg-light: rgba(255, 255, 255, .74);
+  --glass-bg-strong: rgba(255, 255, 255, .94);
+  --glass-bg-panel: rgba(241, 246, 253, .86);
+  --glass-bg-soft: rgba(255, 255, 255, .64);
+  --glass-border: rgba(6, 26, 68, .14);
+  --glass-border-bright: rgba(6, 26, 68, .24);
+  --glass-shadow: 0 24px 65px rgba(6, 26, 68, .13);
+  --glass-focus: #0a285f;
+  --glass-success: #0a285f;
+  --glass-text: #061a44;
+  --glass-muted: #516583;
+  --ink: #061a44;
+  --green: #061a44;
+  --mint: #0a285f;
+  --cream: #edf3fb;
+  --muted: #5b6d89;
+  --line: rgba(6, 26, 68, .13);
+  --orange: #0a285f;
+}
+
+html { background: var(--ice); }
+body, .grocery-only-page {
+  color: var(--navy-900);
+  background:
+    radial-gradient(circle at 8% 2%, rgba(16, 58, 122, .10), transparent 31rem),
+    radial-gradient(circle at 93% 12%, rgba(6, 26, 68, .08), transparent 29rem),
+    linear-gradient(180deg, #fbfdff 0%, #f0f5fc 55%, #f8fbff 100%);
+}
+body::before {
+  background-image: linear-gradient(rgba(6,26,68,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(6,26,68,.025) 1px, transparent 1px);
+}
+::selection { background: rgba(6, 26, 68, .16); color: var(--navy-950); }
+:where(a, button, input, select, textarea):focus-visible { outline-color: rgba(6, 26, 68, .72); }
+
+.top-strip { background: var(--navy-950); color: #fff; border-color: var(--navy-950); }
+.top-strip span, .top-strip .pulse-dot { color: #fff; }
+.site-header, .grocery-only-header {
+  color: var(--navy-900);
+  border-color: var(--glass-border);
+  background: rgba(255, 255, 255, .82);
+  box-shadow: var(--glass-shadow), inset 0 1px rgba(255,255,255,.9);
+}
+.brand { color: var(--navy-900); text-shadow: none; }
+.brand-mark { color: #fff; background: var(--navy-900); box-shadow: 0 10px 25px rgba(6,26,68,.2); }
+.brand-dot { color: var(--navy-700); }
+.search-box, .deals-search-field, .saved-button, .header-lightning {
+  color: var(--navy-900); border-color: var(--glass-border); background: rgba(241, 246, 253, .88);
+}
+.search-box input, .deals-search-field input { color: var(--navy-900); }
+.search-box input::placeholder, .deals-search-field input::placeholder { color: #71819a; }
+.search-box kbd { color: var(--navy-700); border-color: var(--glass-border); background: #fff; }
+.main-navigation > a, .main-navigation .nav-dropdown > button { color: #334c70; }
+.main-navigation > a:hover, .main-navigation .nav-dropdown > button:hover, .main-navigation .nav-dropdown > button.active { color: var(--navy-950); background: var(--navy-050); }
+.nav-submenu { border-color: var(--glass-border); background: rgba(255,255,255,.97); box-shadow: var(--glass-shadow); }
+.nav-submenu a, .nav-submenu button { color: var(--navy-900); }
+.nav-submenu a:hover, .nav-submenu button:hover { background: var(--navy-050); }
+.saved-button b { background: var(--navy-900); color: #fff; }
+.mobile-menu-button span { background: var(--navy-900); }
+
+.hero { color: var(--navy-900); background: transparent; }
+.hero::before {
+  border-color: var(--glass-border-bright);
+  background: linear-gradient(135deg, rgba(255,255,255,.84), rgba(230,238,249,.72));
+  box-shadow: var(--glass-shadow), inset 0 1px #fff;
+}
+.eyebrow, .eyebrow.dark, .collection-eyebrow, .collection-action { color: var(--navy-700); }
+.hero h1, .how h2 { color: var(--navy-950); text-shadow: none; }
+.hero h1 em, .how h2 em {
+  color: var(--navy-700); background: none; -webkit-text-fill-color: currentColor;
+}
+.hero-copy > p, .trust-row, .trust-row b, .text-link { color: #526784; }
+.primary, .feedback-submit, .newsletter button, .grocery-pincode-form button,
+.get-deal-button, .admin-primary, .category-tabs button.active, .grocery-provider-tabs button.active {
+  color: #fff; background: var(--navy-900); box-shadow: 0 13px 30px rgba(6,26,68,.2);
+}
+
+.platforms { border-color: var(--glass-border); background: rgba(255,255,255,.58); }
+.platforms > span { color: #637590; }
+.platforms b { color: var(--navy-900); background: #fff; box-shadow: 0 9px 22px rgba(6,26,68,.09); }
+.ai-grocery-reach-link, .deals-search-panel, .collection-hero, .booking-card, .feedback-card,
+.grocery-pincode-card, .grocery-only-toolbar, .grocery-provider-panel {
+  color: var(--navy-900); border-color: var(--glass-border); background: rgba(255,255,255,.76); box-shadow: var(--glass-shadow), inset 0 1px #fff;
+}
+.ai-grocery-reach h2, .ai-grocery-reach p, .deals-search-copy strong, .section-head h2, .deal-content h3 { color: var(--navy-900); }
+.ai-grocery-reach p, .deals-search-copy small, .section-head p { color: var(--muted); }
+.collection-hero.active { border-color: rgba(6,26,68,.35); background: rgba(220,231,247,.78); box-shadow: var(--glass-shadow); }
+.collection-count { background: var(--navy-100); color: var(--navy-900); }
+.sort select, .category-tabs button { color: var(--navy-900); border-color: var(--glass-border); background: #fff; }
+
+.deal-card { border-color: var(--glass-border); background: rgba(255,255,255,.84); box-shadow: var(--glass-shadow), inset 0 1px #fff; }
+.deal-card::after { background: linear-gradient(145deg, rgba(255,255,255,.7), transparent 38%); }
+.deal-card:hover { border-color: rgba(6,26,68,.35); box-shadow: 0 28px 62px rgba(6,26,68,.17); }
+.product-visual { background: linear-gradient(145deg, #f8fafd, #e3ebf7) !important; }
+.deal-content { color: var(--navy-900); background: rgba(255,255,255,.96); }
+.platform-name { color: var(--navy-700); }.platform-name span { color: var(--navy-900); }
+.price-row strong { color: var(--navy-950); }.price-row s { color: #7d8da4; }.price-row b { color: var(--navy-700); background: var(--navy-050); }
+.deal-tag, .ai-score { color: #fff; border-color: var(--navy-900); background: var(--navy-900); box-shadow: 0 8px 20px rgba(6,26,68,.17); }
+.deal-tag svg, .ai-score svg, .ai-score b, .ai-score small { color: #fff; }
+.heart { color: var(--navy-900); border-color: var(--glass-border); background: rgba(255,255,255,.94); }
+.heart.saved { color: var(--navy-900); background: var(--navy-100); }
+.auto-deal, .coupon { color: var(--navy-700); border-color: var(--glass-border); background: var(--navy-050); }
+.coupon b { color: #fff; background: var(--navy-900); }
+.expiry-pill { color: #60728e; }
+
+.ai-lab, .how {
+  color: var(--navy-900); border-color: var(--glass-border-bright);
+  background: linear-gradient(145deg, rgba(255,255,255,.86), rgba(225,234,247,.78));
+  box-shadow: var(--glass-shadow);
+}
+.ai-lab h2, .how h2 { color: var(--navy-950); }
+.ai-lab p, .how p { color: #586c89; }
+.formula-card, .steps article {
+  color: var(--navy-900); border-color: var(--glass-border); background: rgba(255,255,255,.75); box-shadow: var(--glass-shadow), inset 0 1px #fff;
+}
+.formula-score strong { color: var(--navy-900); text-shadow: none; }
+.formula-bars i, .steps article > span { color: #fff; background: var(--navy-900); box-shadow: 0 12px 28px rgba(6,26,68,.17); }
+.signal-legend i { background: var(--navy-900) !important; }
+
+.newsletter, .feedback-section {
+  color: var(--navy-900); border-color: var(--glass-border-bright);
+  background: linear-gradient(145deg, rgba(255,255,255,.88), rgba(229,237,248,.8));
+  box-shadow: var(--glass-shadow), inset 0 1px #fff;
+}
+.newsletter p, .feedback-intro > p { color: var(--muted); }
+.newsletter input, .feedback-form-card input, .feedback-form-card select, .feedback-form-card textarea {
+  color: var(--navy-900); border-color: var(--glass-border); background: rgba(255,255,255,.86);
+}
+.newsletter input::placeholder, .feedback-form-card input::placeholder, .feedback-form-card textarea::placeholder { color: #75859d; }
+.feedback-contact-cards article, .feedback-form-card { color: var(--navy-900); border-color: var(--glass-border); background: rgba(255,255,255,.72); }
+.feedback-contact-cards a, .feedback-form-card label > span { color: var(--navy-900); }
+
+.admin-shell, .admin-layout, .admin-main { color: var(--navy-900); background: transparent; }
+.admin-header, .admin-topbar, .admin-sidebar { color: var(--navy-900); border-color: var(--glass-border); background: rgba(255,255,255,.9); }
+.admin-hero { color: #fff; border-color: var(--navy-900); background: var(--navy-900); }
+.admin-hero h1, .admin-hero p { color: #fff; }
+.admin-stats article { border-color: rgba(255,255,255,.22); background: rgba(255,255,255,.09); }
+.connector-card, .deal-form, .catalogue, .stat-card, .data-table, .page-header, .admin-card {
+  color: var(--navy-900); border-color: var(--glass-border); background: rgba(255,255,255,.82); box-shadow: var(--glass-shadow), inset 0 1px #fff;
+}
+.deal-form input, .deal-form select, .admin-shell input, .admin-shell select, .admin-shell textarea { color: var(--navy-900); border-color: var(--glass-border); background: #fff; }
+.status, .status.ready { color: var(--navy-900); background: var(--navy-100); }
+
+footer { color: #5f7089; border-color: var(--glass-border); background: rgba(255,255,255,.72); }
+footer .brand, footer a { color: var(--navy-900); }
+.pwa-install { color: #fff; border-color: var(--navy-900); background: var(--navy-900); box-shadow: 0 14px 34px rgba(6,26,68,.2); }
+.pwa-install span { color: var(--navy-900); background: #fff; }
+
+@media (max-width: 1320px) {
+  .main-navigation { border-color: var(--glass-border); background: rgba(255,255,255,.98); }
+}
+@media (max-width: 650px) {
+  body, .grocery-only-page { background: linear-gradient(180deg, #f8fbff, #edf3fb); }
+  .main-navigation { border-color: var(--glass-border); background: rgba(255,255,255,.98); }
+}
